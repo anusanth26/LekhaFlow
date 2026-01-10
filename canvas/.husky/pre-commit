@@ -1,0 +1,2 @@
+cd canvas
+pnpm biome check --staged --no-errors-on-unmatched
