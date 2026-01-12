@@ -2,7 +2,7 @@ import "./env.js";
 import cors from "cors";
 import express from "express";
 import { globalErrorHandler } from "./error/error.js";
-import { router } from "./routes/v1.js";
+import { router } from "./routes/index.js";
 
 const app = express();
 const PORT = 8000;
