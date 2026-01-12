@@ -54,6 +54,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
+      '@supabase/supabase-js':
+        specifier: ^2.90.1
+        version: 2.90.1
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6

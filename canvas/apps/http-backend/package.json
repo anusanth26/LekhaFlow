@@ -21,6 +21,7 @@
 		"@repo/http-core": "workspace:*",
 		"@repo/supabase": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
+		"@supabase/supabase-js": "^2.90.1",
 		"@types/express": "^5.0.6",
 		"tsx": "^4.21.0"
 	},

@@ -1,29 +1,29 @@
 {
-  "name": "@repo/http-core",
-  "version": "1.0.0",
-  "description": "",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
-  "scripts": {
-    "build": "tsc -b",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "dependencies": {
-    "express": "^5.2.1",
-    "http-status-codes": "^2.3.0"
-  },
-  "devDependencies": {
-    "@repo/typescript-config": "workspace:*",
-    "@types/express": "^5.0.6",
-    "@repo/logger": "workspace:*"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+	"name": "@repo/http-core",
+	"version": "1.0.0",
+	"description": "",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc -b",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"dependencies": {
+		"express": "^5.2.1",
+		"http-status-codes": "^2.3.0"
+	},
+	"devDependencies": {
+		"@repo/typescript-config": "workspace:*",
+		"@types/express": "^5.0.6",
+		"@repo/logger": "workspace:*"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC"
 }

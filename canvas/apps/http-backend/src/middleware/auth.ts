@@ -1,35 +1,46 @@
-import { Request, Response, NextFunction } from "express";
-import { supabase } from "@repo/supabase";
 import { HttpError } from "@repo/http-core";
+import { supabase } from "@repo/supabase";
+import type { User } from "@supabase/supabase-js";
+import type { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
 declare global {
-  namespace Express {
-    interface Request {
-      user?: any;
-    }
-  }
+	namespace Express {
+		interface Request {
+			user?: User;
+		}
+	}
 }
 
-export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader) {
-      throw new HttpError("Missing Authorization Header", StatusCodes.UNAUTHORIZED);
-    }
+export const authMiddleware = async (
+	req: Request,
+	_res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const authHeader = req.headers.authorization;
 
-    const token = authHeader.split(" ")[1];
-    
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+		if (!authHeader) {
+			throw new HttpError(
+				"Missing Authorization Header",
+				StatusCodes.UNAUTHORIZED,
+			);
+		}
 
-    if (error || !user) {
-      throw new HttpError("Invalid or Expired Token", StatusCodes.UNAUTHORIZED);
-    }
+		const token = authHeader.split(" ")[1];
 
-    req.user = user;
-    next();
-  } catch (error) {
-    next(error);
-  }
+		const {
+			data: { user },
+			error,
+		} = await supabase.auth.getUser(token);
+
+		if (error || !user) {
+			throw new HttpError("Invalid or Expired Token", StatusCodes.UNAUTHORIZED);
+		}
+
+		req.user = user;
+		next();
+	} catch (error) {
+		next(error);
+	}
 };

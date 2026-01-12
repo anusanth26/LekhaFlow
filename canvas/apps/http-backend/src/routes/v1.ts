@@ -1,6 +1,6 @@
-import { Router } from "express";
 import type { Router as RouterType } from "express";
-import { signup, signin } from "../controller/auth.js";
+import { Router } from "express";
+import { signin, signup } from "../controller/auth.js";
 
 export const router: RouterType = Router();
 
