@@ -6,4 +6,4 @@ export const createSupabaseClient = () => {
 };
 
 export const supabase = createSupabaseClient();
-export * from "./types"; 
+export * from "./types";

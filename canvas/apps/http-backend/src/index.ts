@@ -15,5 +15,5 @@ app.use("/api/v1", router);
 app.use(globalErrorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+	console.log(`Server running on port ${PORT}`);
 });
