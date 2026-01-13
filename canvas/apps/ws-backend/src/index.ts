@@ -1,9 +1,10 @@
-import { WebSocketServer } from "ws";
+const { WebSocketServer } = require("ws");
 // @ts-ignore
-import { setupWSConnection } from "y-websocket/bin/utils";
+const { setupWSConnection } = require("y-websocket/bin/utils");
 
 const wss = new WebSocketServer({ port: 8080 });
 
+// @ts-ignore
 wss.on("connection", (ws, req) => {
 	setupWSConnection(ws, req);
 });
