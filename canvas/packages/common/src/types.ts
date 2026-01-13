@@ -20,3 +20,9 @@ export const CreateCanvasSchema = z.object({
 export type SignupType = z.infer<typeof SignupSchema>;
 export type SigninType = z.infer<typeof SigninSchema>;
 export type CreateCanvasType = z.infer<typeof CreateCanvasSchema>;
+
+export const UpdateCanvasSchema = z.object({
+	data: z.string(),
+});
+
+export type UpdateCanvasType = z.infer<typeof UpdateCanvasSchema>;

@@ -35,3 +35,17 @@ export const createCanvasService = async (
 
 	return data;
 };
+
+export const updateCanvasService = async (
+	canvasId: string,
+	data: string,
+): Promise<void> => {
+	const { error } = await supabase
+		.from("canvases")
+		.update({ data })
+		.eq("id", canvasId);
+
+	if (error) {
+		throw new HttpError(error.message, StatusCodes.INTERNAL_SERVER_ERROR);
+	}
+};

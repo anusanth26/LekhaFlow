@@ -1,0 +1,12 @@
+opencollection: 1.0.0
+info:
+  name: "LekhaFlow"
+  type: workspace
+
+collections:
+  - name: "lekhaFlow"
+    path: "collections\\lekhaFlow"
+
+specs:
+
+docs: ''

@@ -72,6 +72,7 @@ export const signin = async (req: Request, res: Response) => {
 		},
 		{
 			user: data.user,
+			token: data.session.access_token,
 		},
 	);
 };
