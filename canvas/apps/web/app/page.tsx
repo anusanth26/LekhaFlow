@@ -11,13 +11,13 @@ export default function Home() {
 
 	const createRoom = () => {
 		const id = uuidv4();
-		router.push(`/room/${id}`);
+		router.push(`/canvas/${id}`);
 	};
 
 	const joinRoom = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (roomId.trim()) {
-			router.push(`/room/${roomId.trim()}`);
+			router.push(`/canvas/${roomId.trim()}`);
 		}
 	};
 

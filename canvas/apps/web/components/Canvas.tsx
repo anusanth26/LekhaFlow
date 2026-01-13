@@ -125,6 +125,42 @@ export function Canvas({ roomId }: { roomId: string }) {
 
 
 
+    // Persistence State
+    const [status, setStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+
+    const saveCanvas = async (shapesData: Record<string, Shape>) => {
+        setStatus("saving");
+        try {
+            const response = await fetch(`http://localhost:8000/api/v1/canvas/${roomId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ data: JSON.stringify(shapesData) }), // Wrapping to match expected format
+            });
+
+            if (!response.ok) {
+                // throw new Error("Failed to save");
+                console.warn("Failed to auto-save to backend (Backend might be offline)");
+            }
+            setStatus("saved");
+        } catch (error) {
+            console.error("Auto-save error:", error);
+            setStatus("unsaved");
+        }
+    };
+
+    // Debounce Save Trigger
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (Object.keys(shapes).length > 0) {
+                saveCanvas(shapes);
+            }
+        }, 2000); // 2 second debounce
+
+        return () => clearTimeout(timer);
+    }, [shapes]);
+
     const handleMouseMove = (e: any) => {
         if (!provider) return;
         const stage = e.target.getStage();
