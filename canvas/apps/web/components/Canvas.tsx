@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 const NAMES = ["Unicorn", "Tiger", "Eagle", "Panda", "Fox", "Koala", "Badger", "Lion"];
 const COLORS = ["#FF5733", "#33FF57", "#3357FF", "#F033FF", "#33FFF5", "#FFFF33"];
 
-const getRandomName = () => NAMES[Math.floor(Math.random() * NAMES.length)];
+const getRandomName = () => NAMES[Math.floor(Math.random() * NAMES.length)] || "Anonymous";
 const getRandomColor = () => COLORS[Math.floor(Math.random() * COLORS.length)] || "#FF0000";
 
 interface Shape {
