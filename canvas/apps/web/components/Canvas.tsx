@@ -16,11 +16,14 @@ const getRandomColor = () => COLORS[Math.floor(Math.random() * COLORS.length)] |
 
 interface Shape {
     id: string;
+    type: 'rect' | 'circle';
     x: number;
     y: number;
     width: number;
     height: number;
     fill: string;
+    stroke?: string;
+    strokeWidth?: number;
 }
 
 interface UserAwareness {
@@ -120,19 +123,7 @@ export function Canvas({ roomId }: { roomId: string }) {
     }, [provider]);
 
 
-    const addRectangle = () => {
-        const id = uuidv4();
-        const newShape: Shape = {
-            id,
-            x: Math.random() * 400,
-            y: Math.random() * 400,
-            width: 100,
-            height: 100,
-            fill: myIdentity.color
-        };
-        const yShapes = doc.getMap<Shape>("shapes");
-        yShapes.set(id, newShape);
-    };
+
 
     const handleMouseMove = (e: any) => {
         if (!provider) return;
@@ -149,13 +140,33 @@ export function Canvas({ roomId }: { roomId: string }) {
     };
 
     // Tool State
-    const [selectedTool, setSelectedTool] = useState<'select' | 'rectangle'>('select');
+    const [selectedTool, setSelectedTool] = useState<'select' | 'rectangle' | 'circle'>('select');
+    const [selectedColor, setSelectedColor] = useState<string>("#ffcc00"); // Default Excalidraw-ish yellow
 
     const handleShare = () => {
         const url = window.location.href;
         navigator.clipboard.writeText(url).then(() => {
             alert("Room link copied to clipboard!");
         });
+    };
+
+    const addShape = (type: 'rect' | 'circle') => {
+        const id = uuidv4();
+        const newShape: Shape = {
+            id,
+            type,
+            x: Math.random() * 400 + 100,
+            y: Math.random() * 400 + 100,
+            width: 100,
+            height: 100,
+            fill: selectedColor,
+            stroke: "#000000",
+            strokeWidth: 2
+        };
+        const yShapes = doc.getMap<Shape>("shapes");
+        yShapes.set(id, newShape);
+        // Reset to select tool after adding (Excalidraw style often keeps tool active, but for now simple)
+        // setSelectedTool('select'); 
     };
 
     return (
@@ -178,6 +189,41 @@ export function Canvas({ roomId }: { roomId: string }) {
                 </div>
             </div>
 
+            {/* --- LEFT SIDEBAR (Properties / Colors) --- */}
+            <div className="absolute top-20 left-4 z-20 flex flex-col gap-3 bg-white p-3 rounded-lg shadow-md border border-gray-200">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Stroke</div>
+                <div className="flex gap-2">
+                    {["#000000", "#e03131", "#2f9e44", "#1971c2"].map(c => (
+                        <button
+                            key={c}
+                            onClick={() => {
+                                // If a shape is selected (todo), update it. For now just set default.
+                                // setSelectedColor(c); 
+                            }}
+                            className="w-6 h-6 rounded border border-gray-300 shadow-sm hover:scale-110 transition"
+                            style={{ backgroundColor: c }}
+                        />
+                    ))}
+                </div>
+
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 mt-2">Background</div>
+                <div className="grid grid-cols-4 gap-2">
+                    {["transparent", "#ffc9c9", "#b2f2bb", "#a5d8ff", "#ffcc00"].map(c => (
+                        <button
+                            key={c}
+                            onClick={() => setSelectedColor(c)}
+                            className={`w-6 h-6 rounded border shadow-sm hover:scale-110 transition ${selectedColor === c ? 'ring-2 ring-blue-500 ring-offset-1' : 'border-gray-200'}`}
+                            style={{
+                                backgroundColor: c === 'transparent' ? 'white' : c,
+                                backgroundImage: c === 'transparent' ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
+                                backgroundSize: c === 'transparent' ? '4px 4px' : 'auto'
+                            }}
+                            title={c}
+                        />
+                    ))}
+                </div>
+            </div>
+
             {/* --- TOP CENTER TOOLBAR --- */}
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-white p-1.5 rounded-xl shadow-lg border border-gray-200 flex gap-1 items-center">
                 <button
@@ -191,15 +237,21 @@ export function Canvas({ roomId }: { roomId: string }) {
                 <button
                     onClick={() => {
                         setSelectedTool('rectangle');
-                        addRectangle();
+                        addShape('rect');
                     }}
                     className={`p-2.5 rounded-lg transition-all ${selectedTool === 'rectangle' ? 'bg-[#e0dfff] text-[#5b53ff]' : 'hover:bg-[#f1f1f1] text-gray-700'}`}
                     title="Rectangle — R"
                 >
                     <Square className="w-5 h-5" />
                 </button>
-                {/* Placeholder for other tools */}
-                <button className="p-2.5 rounded-lg hover:bg-[#f1f1f1] text-gray-700" title="Circle">
+                <button
+                    onClick={() => {
+                        setSelectedTool('circle');
+                        addShape('circle');
+                    }}
+                    className={`p-2.5 rounded-lg transition-all ${selectedTool === 'circle' ? 'bg-[#e0dfff] text-[#5b53ff]' : 'hover:bg-[#f1f1f1] text-gray-700'}`}
+                    title="Circle — O"
+                >
                     <div className="w-4 h-4 rounded-full border-2 border-currentColor"></div>
                 </button>
                 <button className="p-2.5 rounded-lg hover:bg-[#f1f1f1] text-gray-700" title="Arrow">
@@ -247,28 +299,38 @@ export function Canvas({ roomId }: { roomId: string }) {
             >
                 <Layer>
                     {/* Shapes */}
-                    {Object.values(shapes).map((shape) => (
-                        <Rect
-                            key={shape.id}
-                            x={shape.x}
-                            y={shape.y}
-                            width={shape.width}
-                            height={shape.height}
-                            fill={shape.fill}
-                            stroke="black"
-                            strokeWidth={2}
-                            cornerRadius={2} // Slight rounded for hand-drawn feel approximation
-                            draggable={selectedTool === 'select'}
-                            onDragEnd={(e) => {
+                    {Object.values(shapes).map((shape) => {
+                        const commonProps = {
+                            key: shape.id,
+                            x: shape.x,
+                            y: shape.y,
+                            width: shape.width,
+                            height: shape.height,
+                            fill: shape.fill,
+                            stroke: shape.stroke || "black",
+                            strokeWidth: shape.strokeWidth || 2,
+                            draggable: selectedTool === 'select',
+                            onDragEnd: (e: any) => {
                                 const yShapes = doc.getMap<Shape>("shapes");
                                 yShapes.set(shape.id, {
                                     ...shape,
                                     x: e.target.x(),
                                     y: e.target.y(),
                                 });
-                            }}
-                        />
-                    ))}
+                            }
+                        };
+
+                        if (shape.type === 'circle') {
+                            return <Circle {...commonProps} radius={shape.width / 2} width={undefined} height={undefined} offsetX={-shape.width / 2} offsetY={-shape.height / 2} />;
+                        }
+
+                        return (
+                            <Rect
+                                {...commonProps}
+                                cornerRadius={2}
+                            />
+                        );
+                    })}
 
                     {/* Cursors */}
                     {cursors.map((cursor) => (
@@ -292,7 +354,7 @@ export function Canvas({ roomId }: { roomId: string }) {
                                     cornerRadius={4}
                                 />
                                 <Text
-                                    x={6}
+                                    x={8}
                                     y={6}
                                     text={cursor.name}
                                     fill="white"
