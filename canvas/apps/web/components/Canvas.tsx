@@ -1,28 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Stage, Layer, Rect } from "react-konva";
+import { useEffect, useState, useMemo } from "react";
+import { Stage, Layer, Rect, Circle, Text, Group, Path } from "react-konva";
+import { Pointer, Square } from "lucide-react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { v4 as uuidv4 } from "uuid";
 
-/**
- * Sync Engine Learning Explanation:
- * 
- * 1. Y.Doc (y-document):
- *    This is the "shared database" that lives in the browser. 
- *    Every client has their own copy. Yjs magic ensures they all eventually match (Consistency).
- * 
- * 2. WebsocketProvider:
- *    This acts as the "network cable". It connects your local Y.Doc to the server.
- *    The server (apps/ws-backend) just relays messages. it doesn't need to know the business logic.
- * 
- * 3. Shared Types (Y.Map, Y.Array):
- *    These are special data structures. When you modify them, the changes are 
- *    automatically sent to everyone else.
- */
+// Simple random name generator
+const NAMES = ["Unicorn", "Tiger", "Eagle", "Panda", "Fox", "Koala", "Badger", "Lion"];
+const COLORS = ["#FF5733", "#33FF57", "#3357FF", "#F033FF", "#33FFF5", "#FFFF33"];
 
-// Define what a Shape looks like
+const getRandomName = () => NAMES[Math.floor(Math.random() * NAMES.length)];
+const getRandomColor = () => COLORS[Math.floor(Math.random() * COLORS.length)] || "#FF0000";
+
 interface Shape {
     id: string;
     x: number;
@@ -32,49 +23,102 @@ interface Shape {
     fill: string;
 }
 
-export function Canvas({ roomId }: { roomId: string }) {
-    // Local React State - This is what "renders" the UI
-    const [shapes, setShapes] = useState<Record<string, Shape>>({});
+interface UserAwareness {
+    id: number;
+    point: [number, number];
+    color: string;
+    name: string;
+}
 
-    // Yjs State references (kept in refs or outside state to avoid re-creations)
-    // We strictly need ONE Y.Doc instance per session.
-    const [doc] = useState(() => new Y.Doc());
+export function Canvas({ roomId }: { roomId: string }) {
+    const [shapes, setShapes] = useState<Record<string, Shape>>({});
+    const [cursors, setCursors] = useState<UserAwareness[]>([]);
+
+    // Memoize the doc so it doesn't recreate on every render
+    const doc = useMemo(() => new Y.Doc(), []);
     const [provider, setProvider] = useState<WebsocketProvider | null>(null);
 
+    // Generate my identity constant for this session
+    const myIdentity = useMemo(() => ({
+        name: getRandomName(),
+        color: getRandomColor()
+    }), []);
+
     useEffect(() => {
-        // --- STEP 1: CONNECT TO THE SYNC SERVER ---
-        // We connect to our local ws-backend.
-        // "roomId" differentiates different whiteboards.
         const wsProvider = new WebsocketProvider(
             "ws://localhost:8080",
             roomId,
             doc
         );
-
         setProvider(wsProvider);
 
-        // --- STEP 2: DEFINE SHARED DATA ---
-        // We create a "Shared Map" called 'shapes'.
-        // Think of this like a resilient `new Map()` that syncs over the internet.
+        // --- PART 1: SHARED SHAPES ---
         const yShapes: Y.Map<Shape> = doc.getMap("shapes");
-
-        // --- STEP 3: LISTEN FOR UPDATES ---
-        // "observe" triggers whenever ANYONE (including us) changes this map.
-        yShapes.observe((event) => {
-            // Log the update to understand what's happening (Learning purpose)
-            console.log("Sync Event received!", event.changes.keys);
-
-            // Sync: Copy data from Yjs -> React State to trigger a re-render
+        yShapes.observe(() => {
             setShapes(yShapes.toJSON() as Record<string, Shape>);
         });
-
-        // Initial sync: In case there's already data when we join
         setShapes(yShapes.toJSON() as Record<string, Shape>);
 
+        // --- PART 2: AWARENESS ---
+        const awareness = wsProvider.awareness;
+
+        // Set my initial state immediately (optimistic)
+        awareness.setLocalState({
+            point: [0, 0],
+            color: myIdentity.color,
+            name: myIdentity.name
+        });
+
+        // "States" update handler
+        const handleAwarenessChange = () => {
+            const states = awareness.getStates();
+            const activeCursors: UserAwareness[] = [];
+
+            states.forEach((state: any, clientId: number) => {
+                if (clientId !== doc.clientID && state.point) {
+                    activeCursors.push({
+                        id: clientId,
+                        point: state.point,
+                        color: state.color || 'gray',
+                        name: state.name || `User ${clientId}`
+                    });
+                }
+            });
+            setCursors(activeCursors);
+        };
+
+        awareness.on('change', handleAwarenessChange);
+
+        // Re-broadcast identity when we (re)connect
+        wsProvider.on('status', (event: any) => {
+            if (event.status === 'connected') {
+                awareness.setLocalState({
+                    point: [0, 0],
+                    color: myIdentity.color,
+                    name: myIdentity.name
+                });
+            }
+        });
+
+        // CLEANUP
         return () => {
+            awareness.off('change', handleAwarenessChange);
+            wsProvider.disconnect();
             wsProvider.destroy();
         };
-    }, [roomId, doc]);
+    }, [roomId, doc, myIdentity]);
+
+    // ... (rest of file)
+
+    // Handle Window Unload (Tab Close) to ensure we disappear immediately
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            provider?.disconnect();
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [provider]);
+
 
     const addRectangle = () => {
         const id = uuidv4();
@@ -84,34 +128,125 @@ export function Canvas({ roomId }: { roomId: string }) {
             y: Math.random() * 400,
             width: 100,
             height: 100,
-            fill: '#' + Math.floor(Math.random() * 16777215).toString(16)
+            fill: myIdentity.color
         };
-
-        // --- STEP 4: MAKE A CHANGE ---
-        // To update everyone, we ONLY update the Yjs Map.
-        // We do NOT call setShapes() manually here.
-        // The .observe() listener above will handle the UI update for us.
-        // This ensures "Source of Truth" is always Yjs.
         const yShapes = doc.getMap<Shape>("shapes");
-
-        // This single line propagates the new rectangle to every other user instanty.
         yShapes.set(id, newShape);
     };
 
+    const handleMouseMove = (e: any) => {
+        if (!provider) return;
+        const stage = e.target.getStage();
+        const pointerPosition = stage?.getPointerPosition();
+
+        if (pointerPosition) {
+            // console.log("Sending position:", pointerPosition.x, pointerPosition.y); 
+            provider.awareness.setLocalStateField('point', [
+                pointerPosition.x,
+                pointerPosition.y
+            ]);
+        }
+    };
+
+    // Tool State
+    const [selectedTool, setSelectedTool] = useState<'select' | 'rectangle'>('select');
+
+    const handleShare = () => {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+            alert("Room link copied to clipboard!");
+        });
+    };
+
     return (
-        <div>
-            <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10, background: "white", padding: 10 }}>
-                <p><strong>Room:</strong> {roomId}</p>
-                <p><strong>Status:</strong> {provider?.wsconnected ? "🟢 Connected" : "🔴 Disconnected"}</p>
-                <button onClick={addRectangle} className="px-4 py-2 bg-blue-500 text-white rounded">
-                    Add Rectangle
+        <div className="relative w-screen h-screen overflow-hidden bg-[#ffffff]">
+            {/* --- Dot Grid Background (CSS Pattern) --- */}
+            <div className="absolute inset-0 pointer-events-none opacity-40"
+                style={{
+                    backgroundImage: 'radial-gradient(#ddd 1px, transparent 1px)',
+                    backgroundSize: '20px 20px'
+                }}
+            />
+
+            {/* --- TOP HEADER (Menu & Name) --- */}
+            <div className="absolute top-4 left-4 z-20 flex items-center gap-3">
+                <div className="bg-[#ececf4] hover:bg-[#e0e0e0] p-2 rounded-lg cursor-pointer transition-colors shadow-sm border border-gray-200">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-500 hover:text-gray-900 cursor-pointer transition-colors">Untitled-2024-01-13</span>
+                </div>
+            </div>
+
+            {/* --- TOP CENTER TOOLBAR --- */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-white p-1.5 rounded-xl shadow-lg border border-gray-200 flex gap-1 items-center">
+                <button
+                    onClick={() => setSelectedTool('select')}
+                    className={`p-2.5 rounded-lg transition-all ${selectedTool === 'select' ? 'bg-[#e0dfff] text-[#5b53ff]' : 'hover:bg-[#f1f1f1] text-gray-700'}`}
+                    title="Selection — V"
+                >
+                    <Pointer className="w-5 h-5" />
+                </button>
+                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                <button
+                    onClick={() => {
+                        setSelectedTool('rectangle');
+                        addRectangle();
+                    }}
+                    className={`p-2.5 rounded-lg transition-all ${selectedTool === 'rectangle' ? 'bg-[#e0dfff] text-[#5b53ff]' : 'hover:bg-[#f1f1f1] text-gray-700'}`}
+                    title="Rectangle — R"
+                >
+                    <Square className="w-5 h-5" />
+                </button>
+                {/* Placeholder for other tools */}
+                <button className="p-2.5 rounded-lg hover:bg-[#f1f1f1] text-gray-700" title="Circle">
+                    <div className="w-4 h-4 rounded-full border-2 border-currentColor"></div>
+                </button>
+                <button className="p-2.5 rounded-lg hover:bg-[#f1f1f1] text-gray-700" title="Arrow">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 10H15M15 10L10 5M15 10L10 15" /></svg>
                 </button>
             </div>
 
-            {/* React-Konva Stage */}
-            <Stage width={window.innerWidth} height={window.innerHeight}>
+            {/* --- TOP RIGHT (Collaboration) --- */}
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
+                {/* Avatars */}
+                <div className="flex -space-x-2 mr-2">
+                    <div
+                        className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm"
+                        style={{ backgroundColor: myIdentity.color }}
+                        title={`You (${myIdentity.name})`}
+                    >
+                        {myIdentity.name[0]}
+                    </div>
+                    {cursors.map(c => (
+                        <div
+                            key={c.id}
+                            className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm"
+                            style={{ backgroundColor: c.color }}
+                            title={c.name}
+                        >
+                            {c.name[0]}
+                        </div>
+                    ))}
+                </div>
+
+                <button
+                    onClick={handleShare}
+                    className="bg-[#6965db] hover:bg-[#5b53ff] text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-md transition-colors flex items-center gap-2"
+                >
+                    Share
+                </button>
+            </div>
+
+            {/* --- CANVAS --- */}
+            <Stage
+                width={window.innerWidth}
+                height={window.innerHeight}
+                onMouseMove={handleMouseMove}
+                className="cursor-crosshair"
+            >
                 <Layer>
-                    {/* Render all shapes from our synced state */}
+                    {/* Shapes */}
                     {Object.values(shapes).map((shape) => (
                         <Rect
                             key={shape.id}
@@ -120,10 +255,11 @@ export function Canvas({ roomId }: { roomId: string }) {
                             width={shape.width}
                             height={shape.height}
                             fill={shape.fill}
-                            draggable
-                            // --- STEP 5: HANDLING DRAG (UPDATES) ---
+                            stroke="black"
+                            strokeWidth={2}
+                            cornerRadius={2} // Slight rounded for hand-drawn feel approximation
+                            draggable={selectedTool === 'select'}
                             onDragEnd={(e) => {
-                                // When dragging ends, we update the shared state
                                 const yShapes = doc.getMap<Shape>("shapes");
                                 yShapes.set(shape.id, {
                                     ...shape,
@@ -132,6 +268,39 @@ export function Canvas({ roomId }: { roomId: string }) {
                                 });
                             }}
                         />
+                    ))}
+
+                    {/* Cursors */}
+                    {cursors.map((cursor) => (
+                        <Group key={cursor.id}>
+                            {/* Cursor Arrow */}
+                            <Path
+                                x={cursor.point[0]}
+                                y={cursor.point[1]}
+                                fill={cursor.color}
+                                data="M0 0 L10 24 L14 14 L24 10 Z"
+                                rotation={-10}
+                                scaleX={0.8}
+                                scaleY={0.8}
+                            />
+                            {/* Label */}
+                            <Group x={cursor.point[0] + 16} y={cursor.point[1] + 16}>
+                                <Rect
+                                    fill={cursor.color}
+                                    width={cursor.name.length * 9 + 16}
+                                    height={24}
+                                    cornerRadius={4}
+                                />
+                                <Text
+                                    x={6}
+                                    y={6}
+                                    text={cursor.name}
+                                    fill="white"
+                                    fontSize={12}
+                                    fontStyle="bold"
+                                />
+                            </Group>
+                        </Group>
                     ))}
                 </Layer>
             </Stage>
