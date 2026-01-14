@@ -119,8 +119,8 @@ export function ConnectionStatus({
 	};
 
 	return (
-		<button
-			type="button"
+		// biome-ignore lint/a11y/useSemanticElements: Cannot use <button> here as it contains another <button> (invalid HTML)
+		<div
 			style={{
 				...containerStyle,
 				background: "transparent",
@@ -137,6 +137,8 @@ export function ConnectionStatus({
 					setShowTooltip(!showTooltip);
 				}
 			}}
+			tabIndex={0}
+			role="button"
 		>
 			{/* Pulse animation */}
 			<style>
@@ -206,6 +208,6 @@ export function ConnectionStatus({
 					? `Connected • ${collaboratorCount + 1} ${collaboratorCount === 0 ? "person" : "people"} in this room`
 					: "Connection lost. Click to reconnect."}
 			</div>
-		</button>
+		</div>
 	);
 }
