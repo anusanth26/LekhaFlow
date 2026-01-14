@@ -43,6 +43,7 @@
 
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 import type {
   CanvasElement,
   Tool,
@@ -603,16 +604,25 @@ export const useSelectedElements = () => {
 
 /**
  * Get elements as array (for rendering)
+ * 
+ * useShallow prevents infinite loops by doing shallow comparison
+ * of array contents instead of reference equality
  */
 export const useElementsArray = () => {
-  return useCanvasStore((state) => Array.from(state.elements.values()));
+  return useCanvasStore(
+    useShallow((state) => Array.from(state.elements.values()))
+  );
 };
 
 /**
  * Get collaborators as array
+ * 
+ * useShallow prevents infinite loops by doing shallow comparison
  */
 export const useCollaboratorsArray = () => {
-  return useCanvasStore((state) => Array.from(state.collaborators.values()));
+  return useCanvasStore(
+    useShallow((state) => Array.from(state.collaborators.values()))
+  );
 };
 
 /**

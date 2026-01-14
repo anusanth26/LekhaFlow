@@ -3,12 +3,7 @@
  * LEKHAFLOW - TOOLBAR COMPONENT
  * ============================================================================
  * 
- * Excalidraw-style top toolbar for tool selection.
- * 
- * Features:
- * - Tool selection (selection, shapes, line, arrow, freedraw, text)
- * - Visual feedback for active tool
- * - Keyboard shortcut hints
+ * Excalidraw-style vertical toolbar for tool selection.
  */
 
 "use client";
@@ -27,7 +22,6 @@ import {
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas-store";
 
-// Tool type (simplified to avoid circular imports)
 type Tool = 
   | "selection"
   | "rectangle"
@@ -39,67 +33,120 @@ type Tool =
   | "eraser"
   | "hand";
 
-// ============================================================================
-// TOOL DEFINITIONS
-// ============================================================================
-
 interface ToolDefinition {
   id: Tool;
   icon: React.ReactNode;
   label: string;
   shortcut: string;
+  color: string;
 }
 
 const TOOLS: ToolDefinition[] = [
-  { id: "hand", icon: <Hand className="w-5 h-5" />, label: "Pan", shortcut: "H" },
-  { id: "selection", icon: <MousePointer2 className="w-5 h-5" />, label: "Selection", shortcut: "V" },
-  { id: "rectangle", icon: <Square className="w-5 h-5" />, label: "Rectangle", shortcut: "R" },
-  { id: "ellipse", icon: <Circle className="w-5 h-5" />, label: "Ellipse", shortcut: "O" },
-  { id: "line", icon: <Minus className="w-5 h-5" />, label: "Line", shortcut: "L" },
-  { id: "arrow", icon: <ArrowUpRight className="w-5 h-5" />, label: "Arrow", shortcut: "A" },
-  { id: "freedraw", icon: <Pencil className="w-5 h-5" />, label: "Freedraw", shortcut: "P" },
-  { id: "text", icon: <Type className="w-5 h-5" />, label: "Text", shortcut: "T" },
-  { id: "eraser", icon: <Eraser className="w-5 h-5" />, label: "Eraser", shortcut: "E" },
+  { id: "hand", icon: <Hand size={20} />, label: "Pan", shortcut: "H", color: "#6366f1" },
+  { id: "selection", icon: <MousePointer2 size={20} />, label: "Selection", shortcut: "V", color: "#8b5cf6" },
+  { id: "rectangle", icon: <Square size={20} />, label: "Rectangle", shortcut: "R", color: "#ec4899" },
+  { id: "ellipse", icon: <Circle size={20} />, label: "Ellipse", shortcut: "O", color: "#f43f5e" },
+  { id: "line", icon: <Minus size={20} />, label: "Line", shortcut: "L", color: "#f97316" },
+  { id: "arrow", icon: <ArrowUpRight size={20} />, label: "Arrow", shortcut: "A", color: "#eab308" },
+  { id: "freedraw", icon: <Pencil size={20} />, label: "Freedraw", shortcut: "P", color: "#22c55e" },
+  { id: "text", icon: <Type size={20} />, label: "Text", shortcut: "T", color: "#06b6d4" },
+  { id: "eraser", icon: <Eraser size={20} />, label: "Eraser", shortcut: "E", color: "#64748b" },
 ];
-
-// ============================================================================
-// COMPONENT
-// ============================================================================
 
 export function Toolbar() {
   const activeTool = useCanvasStore((state) => state.activeTool);
   const setActiveTool = useCanvasStore((state) => state.setActiveTool);
 
   return (
-    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30">
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-1.5 flex items-center gap-0.5">
-        {TOOLS.map((tool, index) => (
-          <React.Fragment key={tool.id}>
-            {/* Add separator after hand and after selection */}
-            {(index === 1 || index === 2) && (
-              <div className="w-px h-6 bg-gray-200 mx-1" />
-            )}
-            
-            <button
-              onClick={() => setActiveTool(tool.id)}
-              className={`
-                relative p-2.5 rounded-lg transition-all duration-150
-                ${activeTool === tool.id
-                  ? "bg-violet-100 text-violet-600"
-                  : "hover:bg-gray-100 text-gray-700"
-                }
-              `}
-              title={`${tool.label} — ${tool.shortcut}`}
-            >
-              {tool.icon}
-              
-              {/* Active indicator */}
-              {activeTool === tool.id && (
-                <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 rounded-full bg-violet-600" />
+    <div
+      style={{
+        position: "absolute",
+        left: "16px",
+        top: "50%",
+        transform: "translateY(-50%)",
+        zIndex: 50,
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "white",
+          borderRadius: "16px",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
+          border: "1px solid #e5e7eb",
+          padding: "8px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+        }}
+      >
+        {TOOLS.map((tool, index) => {
+          const isActive = activeTool === tool.id;
+          return (
+            <React.Fragment key={tool.id}>
+              {/* Separators */}
+              {(index === 2) && (
+                <div
+                  style={{
+                    width: "32px",
+                    height: "1px",
+                    backgroundColor: "#e5e7eb",
+                    margin: "4px auto",
+                  }}
+                />
               )}
-            </button>
-          </React.Fragment>
-        ))}
+              
+              <button
+                onClick={() => setActiveTool(tool.id)}
+                title={`${tool.label} (${tool.shortcut})`}
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "12px",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.15s ease",
+                  backgroundColor: isActive ? `${tool.color}15` : "transparent",
+                  color: isActive ? tool.color : "#64748b",
+                  boxShadow: isActive ? `0 0 0 2px ${tool.color}30` : "none",
+                  position: "relative",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "#f1f5f9";
+                    e.currentTarget.style.color = "#1e293b";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = "#64748b";
+                  }
+                }}
+              >
+                {tool.icon}
+                
+                {/* Active indicator bar */}
+                {isActive && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: "-2px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "3px",
+                      height: "16px",
+                      borderRadius: "2px",
+                      backgroundColor: tool.color,
+                    }}
+                  />
+                )}
+              </button>
+            </React.Fragment>
+          );
+        })}
       </div>
     </div>
   );

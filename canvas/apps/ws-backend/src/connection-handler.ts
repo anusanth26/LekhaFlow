@@ -28,9 +28,19 @@ import { roomManager } from "./room-manager.js";
 
 const logger = createLogger("ConnectionHandler");
 
-// Import y-websocket utilities
-// @ts-ignore - y-websocket doesn't have proper types
-const { setupWSConnection } = require("y-websocket/bin/utils");
+// y-websocket utilities will be loaded dynamically
+let setupWSConnection: any = null;
+
+/**
+ * Initialize y-websocket module (ESM-compatible dynamic import)
+ */
+async function initYWebsocket(): Promise<void> {
+  if (!setupWSConnection) {
+    // Dynamic import for ESM compatibility
+    const yWebsocket = await import("y-websocket/bin/utils");
+    setupWSConnection = yWebsocket.setupWSConnection;
+  }
+}
 
 /**
  * Parse room ID from WebSocket request URL
@@ -89,7 +99,10 @@ function parseUserInfo(req: IncomingMessage): { userId?: string; userName?: stri
  * 5. Hand off to y-websocket for sync protocol
  * 6. Set up cleanup handlers
  */
-export function handleConnection(ws: LekhaSocket, req: IncomingMessage): void {
+export async function handleConnection(ws: LekhaSocket, req: IncomingMessage): Promise<void> {
+  // Initialize y-websocket module (ESM dynamic import)
+  await initYWebsocket();
+  
   // STEP 1: Parse room ID from the URL path
   // Example: ws://localhost:8080/room-abc -> roomId = "room-abc"
   const roomId = parseRoomId(req);

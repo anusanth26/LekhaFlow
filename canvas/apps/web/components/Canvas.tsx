@@ -59,6 +59,11 @@ import { PropertiesPanel } from "./canvas/PropertiesPanel";
 import { HeaderLeft, HeaderRight } from "./canvas/Header";
 import { CollaboratorCursors } from "./canvas/CollaboratorCursors";
 import { ZoomControls } from "./canvas/ZoomControls";
+import { HelpPanel } from "./canvas/HelpPanel";
+import { ContextMenu } from "./canvas/ContextMenu";
+import { ExportModal } from "./canvas/ExportModal";
+import { ConnectionStatus } from "./canvas/ConnectionStatus";
+import { ResizeHandles, type HandlePosition } from "./canvas/ResizeHandles";
 import {
   createRectangle,
   createEllipse,
@@ -97,7 +102,6 @@ function renderElement(
   onDragEnd: (id: string, x: number, y: number) => void
 ) {
   const commonProps = {
-    key: element.id,
     id: element.id,
     x: element.x,
     y: element.y,
@@ -119,6 +123,7 @@ function renderElement(
     case "rectangle":
       return (
         <Rect
+          key={element.id}
           {...commonProps}
           {...strokeProps}
           width={element.width}
@@ -131,6 +136,7 @@ function renderElement(
     case "ellipse":
       return (
         <Ellipse
+          key={element.id}
           {...commonProps}
           {...strokeProps}
           radiusX={element.width / 2}
@@ -147,6 +153,7 @@ function renderElement(
       const points = lineElement.points.flatMap((p) => [p.x, p.y]);
       return (
         <Line
+          key={element.id}
           {...commonProps}
           {...strokeProps}
           points={points}
@@ -167,6 +174,7 @@ function renderElement(
       const points = freedrawElement.points.flatMap((p) => [p[0], p[1]]);
       return (
         <Line
+          key={element.id}
           {...commonProps}
           {...strokeProps}
           points={points}
@@ -181,6 +189,7 @@ function renderElement(
       const textElement = element as TextElement;
       return (
         <Text
+          key={element.id}
           {...commonProps}
           text={textElement.text}
           fontSize={textElement.fontSize}
@@ -255,6 +264,8 @@ export function Canvas({ roomId }: CanvasProps) {
     setIsDragging,
     interactionStartPoint,
     setInteractionStartPoint,
+    isConnected,
+    isSynced,
   } = useCanvasStore();
 
   // Elements and collaborators from store
@@ -273,6 +284,26 @@ export function Canvas({ roomId }: CanvasProps) {
   
   // Container dimensions
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  
+  // Clipboard for copy/paste
+  const [clipboard, setClipboard] = useState<CanvasElement[]>([]);
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 0,
+    y: 0,
+    visible: false,
+  });
+  
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+  
+  // Reconnect function
+  const handleReconnect = useCallback(() => {
+    // The hook will automatically reconnect when the component re-initializes
+    // For now, we can just reload the page or re-establish the connection
+    window.location.reload();
+  }, []);
 
   // ─────────────────────────────────────────────────────────────────
   // EFFECTS
@@ -298,6 +329,129 @@ export function Canvas({ roomId }: CanvasProps) {
   useEffect(() => {
     updateSelection(Array.from(selectedElementIds));
   }, [selectedElementIds, updateSelection]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // COPY / PASTE / LAYER HANDLERS
+  // ─────────────────────────────────────────────────────────────────
+  
+  /**
+   * Copy selected elements to clipboard
+   */
+  const handleCopy = useCallback(() => {
+    if (selectedElementIds.size === 0) return;
+    
+    const selectedElements = elements.filter((el) => selectedElementIds.has(el.id));
+    setClipboard(selectedElements);
+  }, [selectedElementIds, elements]);
+  
+  /**
+   * Paste elements from clipboard
+   */
+  const handlePaste = useCallback(() => {
+    if (clipboard.length === 0) return;
+    
+    const newIds = new Set<string>();
+    const offset = 20; // Offset for pasted elements
+    
+    for (const el of clipboard) {
+      const newId = `${el.id}-copy-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const newElement: CanvasElement = {
+        ...el,
+        id: newId,
+        x: el.x + offset,
+        y: el.y + offset,
+        version: 0,
+        created: Date.now(),
+        updated: Date.now(),
+      };
+      addElement(newElement);
+      newIds.add(newId);
+    }
+    
+    // Select pasted elements
+    setSelectedElementIds(newIds);
+  }, [clipboard, addElement, setSelectedElementIds]);
+  
+  /**
+   * Bring selected elements forward (increase z-index)
+   */
+  const handleBringForward = useCallback(() => {
+    if (selectedElementIds.size === 0) return;
+    
+    for (const id of selectedElementIds) {
+      const element = elements.find((el) => el.id === id);
+      if (element) {
+        updateElement(id, { zIndex: (element.zIndex || 0) + 1 });
+      }
+    }
+  }, [selectedElementIds, elements, updateElement]);
+  
+  /**
+   * Send selected elements backward (decrease z-index)
+   */
+  const handleSendBackward = useCallback(() => {
+    if (selectedElementIds.size === 0) return;
+    
+    for (const id of selectedElementIds) {
+      const element = elements.find((el) => el.id === id);
+      if (element) {
+        updateElement(id, { zIndex: Math.max(0, (element.zIndex || 0) - 1) });
+      }
+    }
+  }, [selectedElementIds, elements, updateElement]);
+  
+  /**
+   * Bring selected elements to front (max z-index)
+   */
+  const handleBringToFront = useCallback(() => {
+    if (selectedElementIds.size === 0) return;
+    
+    const maxZ = Math.max(...elements.map((el) => el.zIndex || 0), 0);
+    
+    for (const id of selectedElementIds) {
+      updateElement(id, { zIndex: maxZ + 1 });
+    }
+  }, [selectedElementIds, elements, updateElement]);
+  
+  /**
+   * Send selected elements to back (z-index = 0)
+   */
+  const handleSendToBack = useCallback(() => {
+    if (selectedElementIds.size === 0) return;
+    
+    for (const id of selectedElementIds) {
+      updateElement(id, { zIndex: 0 });
+    }
+  }, [selectedElementIds, updateElement]);
+  
+  /**
+   * Handle context menu (right-click)
+   */
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      visible: true,
+    });
+  }, []);
+  
+  /**
+   * Close context menu
+   */
+  const closeContextMenu = useCallback(() => {
+    setContextMenu((prev) => ({ ...prev, visible: false }));
+  }, []);
+  
+  /**
+   * Handle delete from context menu
+   */
+  const handleDelete = useCallback(() => {
+    if (selectedElementIds.size > 0) {
+      deleteElements(Array.from(selectedElementIds));
+      clearSelection();
+    }
+  }, [selectedElementIds, deleteElements, clearSelection]);
 
   // ─────────────────────────────────────────────────────────────────
   // KEYBOARD SHORTCUTS
@@ -364,6 +518,49 @@ export function Canvas({ roomId }: CanvasProps) {
         setSelectedElementIds(new Set(elements.map((el) => el.id)));
         return;
       }
+
+      // Copy: Ctrl/Cmd + C
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        e.preventDefault();
+        handleCopy();
+        return;
+      }
+
+      // Paste: Ctrl/Cmd + V
+      if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        e.preventDefault();
+        handlePaste();
+        return;
+      }
+
+      // Duplicate: Ctrl/Cmd + D
+      if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+        e.preventDefault();
+        handleCopy();
+        handlePaste();
+        return;
+      }
+
+      // Bring to front: Ctrl/Cmd + ]
+      if ((e.ctrlKey || e.metaKey) && e.key === "]") {
+        e.preventDefault();
+        handleBringToFront();
+        return;
+      }
+
+      // Send to back: Ctrl/Cmd + [
+      if ((e.ctrlKey || e.metaKey) && e.key === "[") {
+        e.preventDefault();
+        handleSendToBack();
+        return;
+      }
+
+      // Export: Ctrl/Cmd + E
+      if ((e.ctrlKey || e.metaKey) && e.key === "e") {
+        e.preventDefault();
+        setShowExportModal(true);
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -378,6 +575,10 @@ export function Canvas({ roomId }: CanvasProps) {
     setIsDrawing,
     elements,
     setSelectedElementIds,
+    handleCopy,
+    handlePaste,
+    handleBringToFront,
+    handleSendToBack,
   ]);
 
   // ─────────────────────────────────────────────────────────────────
@@ -686,14 +887,18 @@ export function Canvas({ roomId }: CanvasProps) {
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-white"
+      className="relative w-full h-full overflow-hidden"
+      style={{ backgroundColor: "#fafafa" }}
+      onContextMenu={handleContextMenu}
     >
-      {/* Dot Grid Background */}
+      {/* Clean dot grid background - Excalidraw style */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-40"
+        className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: "radial-gradient(#ddd 1px, transparent 1px)",
-          backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
+          backgroundImage: `
+            radial-gradient(circle, #d4d4d4 1px, transparent 1px)
+          `,
+          backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
           backgroundPosition: `${scrollX}px ${scrollY}px`,
         }}
       />
@@ -704,9 +909,18 @@ export function Canvas({ roomId }: CanvasProps) {
       <Toolbar />
       <PropertiesPanel />
       <ZoomControls />
+      <HelpPanel />
 
       {/* Collaborator Cursors */}
       <CollaboratorCursors collaborators={collaborators} />
+      
+      {/* Connection Status */}
+      <ConnectionStatus
+        isConnected={isConnected}
+        isSynced={isSynced}
+        collaboratorCount={collaborators.length}
+        onReconnect={handleReconnect}
+      />
 
       {/* Canvas Stage */}
       <Stage
@@ -769,6 +983,31 @@ export function Canvas({ roomId }: CanvasProps) {
       <div className="absolute bottom-4 right-4 z-20 text-xs text-gray-400">
         Press <kbd className="px-1 py-0.5 bg-gray-100 rounded">?</kbd> for shortcuts
       </div>
+
+      {/* Context Menu */}
+      <ContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        isVisible={contextMenu.visible}
+        hasSelection={selectedElementIds.size > 0}
+        hasClipboard={clipboard.length > 0}
+        onClose={closeContextMenu}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
+        onDelete={handleDelete}
+        onBringForward={handleBringForward}
+        onSendBackward={handleSendBackward}
+        onBringToFront={handleBringToFront}
+        onSendToBack={handleSendToBack}
+      />
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        elements={elements}
+        stageRef={stageRef}
+      />
     </div>
   );
 }
