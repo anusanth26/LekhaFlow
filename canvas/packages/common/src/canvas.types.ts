@@ -2,10 +2,10 @@
  * ============================================================================
  * LEKHAFLOW CANVAS TYPES
  * ============================================================================
- * 
+ *
  * Core type definitions for the collaborative canvas sync engine.
  * These types are shared between frontend and backend.
- * 
+ *
  * Architecture follows Excalidraw's patterns:
  * - Elements are immutable, identified by ID
  * - Changes are tracked via version numbers
@@ -44,13 +44,13 @@ export interface BoundingBox {
  * Supported element types in the canvas
  * Each type has specific rendering and interaction logic
  */
-export type ElementType = 
-  | "rectangle"    // Basic rectangle shape
-  | "ellipse"      // Circle/ellipse shape
-  | "line"         // Straight line with optional arrows
-  | "arrow"        // Arrow (line with arrowhead)
-  | "freedraw"     // Freehand drawing path
-  | "text";        // Text element
+export type ElementType =
+  | "rectangle" // Basic rectangle shape
+  | "ellipse" // Circle/ellipse shape
+  | "line" // Straight line with optional arrows
+  | "arrow" // Arrow (line with arrowhead)
+  | "freedraw" // Freehand drawing path
+  | "text"; // Text element
 
 /**
  * Stroke style for element borders
@@ -73,7 +73,7 @@ export type Arrowhead = "none" | "arrow" | "triangle" | "circle" | "square";
 
 /**
  * Base properties shared by all canvas elements
- * 
+ *
  * KEY CONCEPTS:
  * - `id`: Unique identifier (UUID), immutable
  * - `version`: Incremented on every change, used for conflict resolution
@@ -83,72 +83,78 @@ export type Arrowhead = "none" | "arrow" | "triangle" | "circle" | "square";
 export interface ExcalidrawElementBase {
   /** Unique element identifier (UUID v4) */
   id: string;
-  
+
   /** Element type discriminator */
   type: ElementType;
-  
+
   /** Position: top-left X coordinate */
   x: number;
-  
+
   /** Position: top-left Y coordinate */
   y: number;
-  
+
   /** Element width (can be negative for flipped elements) */
   width: number;
-  
+
   /** Element height (can be negative for flipped elements) */
   height: number;
-  
+
   /** Rotation angle in degrees (0-360) */
   angle: number;
-  
+
   /** Stroke/border color (hex string) */
   strokeColor: string;
-  
+
   /** Fill/background color (hex string or "transparent") */
   backgroundColor: string;
-  
+
   /** Stroke width in pixels */
   strokeWidth: number;
-  
+
   /** Stroke style pattern */
   strokeStyle: StrokeStyle;
-  
+
   /** Fill pattern style */
   fillStyle: FillStyle;
-  
+
   /** Element opacity (0-100) */
   opacity: number;
-  
+
   /** Roughness for hand-drawn effect (0 = clean, higher = rougher) */
   roughness: number;
-  
+
   /** Seed for consistent rough.js rendering */
   seed: number;
-  
+
   /** Version number, incremented on each change */
   version: number;
-  
+
   /** Random nonce for conflict resolution */
   versionNonce: number;
-  
+
   /** Soft delete flag */
   isDeleted: boolean;
-  
+
   /** Group IDs this element belongs to */
   groupIds: string[];
-  
+
   /** Bound element IDs (e.g., text bound to shape) */
   boundElements: Array<{ id: string; type: "text" | "arrow" }> | null;
-  
+
   /** Last updated timestamp */
   updated: number;
-  
+
   /** Link URL (optional, for clickable elements) */
   link: string | null;
-  
+
   /** Whether element is locked from editing */
   locked: boolean;
+
+  /** Timestamp of creation (Unix epoch) */
+  created?: number;
+
+  /** Explicit z-index for layering */
+  zIndex?: number;
 }
 
 // ============================================================================
@@ -253,12 +259,12 @@ export interface TextElement extends ExcalidrawElementBase {
 /**
  * Union type of all element types
  */
-export type CanvasElement = 
-  | RectangleElement 
-  | EllipseElement 
-  | LineElement 
-  | ArrowElement 
-  | FreedrawElement 
+export type CanvasElement =
+  | RectangleElement
+  | EllipseElement
+  | LineElement
+  | ArrowElement
+  | FreedrawElement
   | TextElement;
 
 // ============================================================================
@@ -268,16 +274,16 @@ export type CanvasElement =
 /**
  * Available tools in the canvas
  */
-export type Tool = 
-  | "selection"   // Select and move elements
-  | "rectangle"   // Draw rectangles
-  | "ellipse"     // Draw ellipses
-  | "line"        // Draw lines
-  | "arrow"       // Draw arrows
-  | "freedraw"    // Freehand drawing
-  | "text"        // Add text
-  | "eraser"      // Erase elements
-  | "hand";       // Pan canvas
+export type Tool =
+  | "selection" // Select and move elements
+  | "rectangle" // Draw rectangles
+  | "ellipse" // Draw ellipses
+  | "line" // Draw lines
+  | "arrow" // Draw arrows
+  | "freedraw" // Freehand drawing
+  | "text" // Add text
+  | "eraser" // Erase elements
+  | "hand"; // Pan canvas
 
 // ============================================================================
 // APP STATE TYPES
@@ -351,13 +357,13 @@ export interface AppState {
 /**
  * WebSocket message types for sync protocol
  */
-export type SyncMessageType = 
-  | "sync-update"     // Yjs document update
-  | "awareness"       // Awareness update (cursors)
-  | "join-room"       // Join room request
-  | "leave-room"      // Leave room notification
-  | "room-state"      // Full room state snapshot
-  | "error";          // Error message
+export type SyncMessageType =
+  | "sync-update" // Yjs document update
+  | "awareness" // Awareness update (cursors)
+  | "join-room" // Join room request
+  | "leave-room" // Leave room notification
+  | "room-state" // Full room state snapshot
+  | "error"; // Error message
 
 /**
  * Base sync message structure
@@ -465,5 +471,12 @@ export const DEFAULT_FONT_FAMILY = 1; // Virgil (hand-drawn)
 
 export const COLORS = {
   stroke: ["#1e1e1e", "#e03131", "#2f9e44", "#1971c2", "#f08c00", "#9c36b5"],
-  background: ["transparent", "#ffc9c9", "#b2f2bb", "#a5d8ff", "#ffec99", "#eebefa"],
+  background: [
+    "transparent",
+    "#ffc9c9",
+    "#b2f2bb",
+    "#a5d8ff",
+    "#ffec99",
+    "#eebefa",
+  ],
 } as const;
