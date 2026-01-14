@@ -1,1 +1,1 @@
-{"root":["./src/connection-handler.ts","./src/index.ts","./src/logger.ts","./src/room-manager.ts","./src/types.ts","./src/y-websocket.d.ts"],"version":"5.9.2"}
+{"root":["./src/env.ts","./src/index.ts"],"version":"5.9.2"}

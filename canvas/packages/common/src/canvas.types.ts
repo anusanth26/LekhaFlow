@@ -21,8 +21,8 @@
  * Used for positions, cursor locations, and path points
  */
 export interface Point {
-  x: number;
-  y: number;
+	x: number;
+	y: number;
 }
 
 /**
@@ -30,10 +30,10 @@ export interface Point {
  * Used for hit testing, selection, and rendering optimizations
  */
 export interface BoundingBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
 }
 
 // ============================================================================
@@ -45,12 +45,12 @@ export interface BoundingBox {
  * Each type has specific rendering and interaction logic
  */
 export type ElementType =
-  | "rectangle" // Basic rectangle shape
-  | "ellipse" // Circle/ellipse shape
-  | "line" // Straight line with optional arrows
-  | "arrow" // Arrow (line with arrowhead)
-  | "freedraw" // Freehand drawing path
-  | "text"; // Text element
+	| "rectangle" // Basic rectangle shape
+	| "ellipse" // Circle/ellipse shape
+	| "line" // Straight line with optional arrows
+	| "arrow" // Arrow (line with arrowhead)
+	| "freedraw" // Freehand drawing path
+	| "text"; // Text element
 
 /**
  * Stroke style for element borders
@@ -81,80 +81,80 @@ export type Arrowhead = "none" | "arrow" | "triangle" | "circle" | "square";
  * - `isDeleted`: Soft delete flag (elements are never truly removed for sync)
  */
 export interface ExcalidrawElementBase {
-  /** Unique element identifier (UUID v4) */
-  id: string;
+	/** Unique element identifier (UUID v4) */
+	id: string;
 
-  /** Element type discriminator */
-  type: ElementType;
+	/** Element type discriminator */
+	type: ElementType;
 
-  /** Position: top-left X coordinate */
-  x: number;
+	/** Position: top-left X coordinate */
+	x: number;
 
-  /** Position: top-left Y coordinate */
-  y: number;
+	/** Position: top-left Y coordinate */
+	y: number;
 
-  /** Element width (can be negative for flipped elements) */
-  width: number;
+	/** Element width (can be negative for flipped elements) */
+	width: number;
 
-  /** Element height (can be negative for flipped elements) */
-  height: number;
+	/** Element height (can be negative for flipped elements) */
+	height: number;
 
-  /** Rotation angle in degrees (0-360) */
-  angle: number;
+	/** Rotation angle in degrees (0-360) */
+	angle: number;
 
-  /** Stroke/border color (hex string) */
-  strokeColor: string;
+	/** Stroke/border color (hex string) */
+	strokeColor: string;
 
-  /** Fill/background color (hex string or "transparent") */
-  backgroundColor: string;
+	/** Fill/background color (hex string or "transparent") */
+	backgroundColor: string;
 
-  /** Stroke width in pixels */
-  strokeWidth: number;
+	/** Stroke width in pixels */
+	strokeWidth: number;
 
-  /** Stroke style pattern */
-  strokeStyle: StrokeStyle;
+	/** Stroke style pattern */
+	strokeStyle: StrokeStyle;
 
-  /** Fill pattern style */
-  fillStyle: FillStyle;
+	/** Fill pattern style */
+	fillStyle: FillStyle;
 
-  /** Element opacity (0-100) */
-  opacity: number;
+	/** Element opacity (0-100) */
+	opacity: number;
 
-  /** Roughness for hand-drawn effect (0 = clean, higher = rougher) */
-  roughness: number;
+	/** Roughness for hand-drawn effect (0 = clean, higher = rougher) */
+	roughness: number;
 
-  /** Seed for consistent rough.js rendering */
-  seed: number;
+	/** Seed for consistent rough.js rendering */
+	seed: number;
 
-  /** Version number, incremented on each change */
-  version: number;
+	/** Version number, incremented on each change */
+	version: number;
 
-  /** Random nonce for conflict resolution */
-  versionNonce: number;
+	/** Random nonce for conflict resolution */
+	versionNonce: number;
 
-  /** Soft delete flag */
-  isDeleted: boolean;
+	/** Soft delete flag */
+	isDeleted: boolean;
 
-  /** Group IDs this element belongs to */
-  groupIds: string[];
+	/** Group IDs this element belongs to */
+	groupIds: string[];
 
-  /** Bound element IDs (e.g., text bound to shape) */
-  boundElements: Array<{ id: string; type: "text" | "arrow" }> | null;
+	/** Bound element IDs (e.g., text bound to shape) */
+	boundElements: Array<{ id: string; type: "text" | "arrow" }> | null;
 
-  /** Last updated timestamp */
-  updated: number;
+	/** Last updated timestamp */
+	updated: number;
 
-  /** Link URL (optional, for clickable elements) */
-  link: string | null;
+	/** Link URL (optional, for clickable elements) */
+	link: string | null;
 
-  /** Whether element is locked from editing */
-  locked: boolean;
+	/** Whether element is locked from editing */
+	locked: boolean;
 
-  /** Timestamp of creation (Unix epoch) */
-  created?: number;
+	/** Timestamp of creation (Unix epoch) */
+	created?: number;
 
-  /** Explicit z-index for layering */
-  zIndex?: number;
+	/** Explicit z-index for layering */
+	zIndex?: number;
 }
 
 // ============================================================================
@@ -166,9 +166,9 @@ export interface ExcalidrawElementBase {
  * Simple rectangular shape with optional rounded corners
  */
 export interface RectangleElement extends ExcalidrawElementBase {
-  type: "rectangle";
-  /** Corner radius for rounded rectangles */
-  roundness: { type: "adaptive" | "proportional"; value: number } | null;
+	type: "rectangle";
+	/** Corner radius for rounded rectangles */
+	roundness: { type: "adaptive" | "proportional"; value: number } | null;
 }
 
 /**
@@ -176,7 +176,7 @@ export interface RectangleElement extends ExcalidrawElementBase {
  * Circle or ellipse shape
  */
 export interface EllipseElement extends ExcalidrawElementBase {
-  type: "ellipse";
+	type: "ellipse";
 }
 
 /**
@@ -184,38 +184,38 @@ export interface EllipseElement extends ExcalidrawElementBase {
  * Straight or multi-point line with optional arrowheads
  */
 export interface LineElement extends ExcalidrawElementBase {
-  type: "line";
-  /** Array of points relative to element origin */
-  points: Point[];
-  /** Start arrowhead type */
-  startArrowhead: Arrowhead | null;
-  /** End arrowhead type */
-  endArrowhead: Arrowhead | null;
-  /** Binding at start point */
-  startBinding: PointBinding | null;
-  /** Binding at end point */
-  endBinding: PointBinding | null;
+	type: "line";
+	/** Array of points relative to element origin */
+	points: Point[];
+	/** Start arrowhead type */
+	startArrowhead: Arrowhead | null;
+	/** End arrowhead type */
+	endArrowhead: Arrowhead | null;
+	/** Binding at start point */
+	startBinding: PointBinding | null;
+	/** Binding at end point */
+	endBinding: PointBinding | null;
 }
 
 /**
  * Arrow element (specialized line with default arrowhead)
  */
 export interface ArrowElement extends ExcalidrawElementBase {
-  type: "arrow";
-  points: Point[];
-  startArrowhead: Arrowhead | null;
-  endArrowhead: Arrowhead;
-  startBinding: PointBinding | null;
-  endBinding: PointBinding | null;
+	type: "arrow";
+	points: Point[];
+	startArrowhead: Arrowhead | null;
+	endArrowhead: Arrowhead;
+	startBinding: PointBinding | null;
+	endBinding: PointBinding | null;
 }
 
 /**
  * Point binding for connecting arrows to shapes
  */
 export interface PointBinding {
-  elementId: string;
-  focus: number;
-  gap: number;
+	elementId: string;
+	focus: number;
+	gap: number;
 }
 
 /**
@@ -223,13 +223,13 @@ export interface PointBinding {
  * Freehand drawing path stored as array of points
  */
 export interface FreedrawElement extends ExcalidrawElementBase {
-  type: "freedraw";
-  /** Array of points forming the path, with pressure data */
-  points: Array<[number, number, number?]>; // [x, y, pressure?]
-  /** Pressure sensitivity enabled */
-  pressures: number[];
-  /** Smoothing applied */
-  simulatePressure: boolean;
+	type: "freedraw";
+	/** Array of points forming the path, with pressure data */
+	points: Array<[number, number, number?]>; // [x, y, pressure?]
+	/** Pressure sensitivity enabled */
+	pressures: number[];
+	/** Smoothing applied */
+	simulatePressure: boolean;
 }
 
 /**
@@ -237,35 +237,35 @@ export interface FreedrawElement extends ExcalidrawElementBase {
  * Editable text with font properties
  */
 export interface TextElement extends ExcalidrawElementBase {
-  type: "text";
-  /** Text content */
-  text: string;
-  /** Font size in pixels */
-  fontSize: number;
-  /** Font family ID */
-  fontFamily: number;
-  /** Text alignment */
-  textAlign: "left" | "center" | "right";
-  /** Vertical alignment */
-  verticalAlign: "top" | "middle" | "bottom";
-  /** Line height multiplier */
-  lineHeight: number;
-  /** ID of container element (if text is bound to shape) */
-  containerId: string | null;
-  /** Original text before wrapping */
-  originalText: string;
+	type: "text";
+	/** Text content */
+	text: string;
+	/** Font size in pixels */
+	fontSize: number;
+	/** Font family ID */
+	fontFamily: number;
+	/** Text alignment */
+	textAlign: "left" | "center" | "right";
+	/** Vertical alignment */
+	verticalAlign: "top" | "middle" | "bottom";
+	/** Line height multiplier */
+	lineHeight: number;
+	/** ID of container element (if text is bound to shape) */
+	containerId: string | null;
+	/** Original text before wrapping */
+	originalText: string;
 }
 
 /**
  * Union type of all element types
  */
 export type CanvasElement =
-  | RectangleElement
-  | EllipseElement
-  | LineElement
-  | ArrowElement
-  | FreedrawElement
-  | TextElement;
+	| RectangleElement
+	| EllipseElement
+	| LineElement
+	| ArrowElement
+	| FreedrawElement
+	| TextElement;
 
 // ============================================================================
 // TOOL TYPES
@@ -275,15 +275,15 @@ export type CanvasElement =
  * Available tools in the canvas
  */
 export type Tool =
-  | "selection" // Select and move elements
-  | "rectangle" // Draw rectangles
-  | "ellipse" // Draw ellipses
-  | "line" // Draw lines
-  | "arrow" // Draw arrows
-  | "freedraw" // Freehand drawing
-  | "text" // Add text
-  | "eraser" // Erase elements
-  | "hand"; // Pan canvas
+	| "selection" // Select and move elements
+	| "rectangle" // Draw rectangles
+	| "ellipse" // Draw ellipses
+	| "line" // Draw lines
+	| "arrow" // Draw arrows
+	| "freedraw" // Freehand drawing
+	| "text" // Add text
+	| "eraser" // Erase elements
+	| "hand"; // Pan canvas
 
 // ============================================================================
 // APP STATE TYPES
@@ -293,61 +293,61 @@ export type Tool =
  * Cursor position with user identity for awareness
  */
 export interface UserCursor {
-  odLOApointer: Point;
-  odLOAuser: {
-    odLOAid: string;
-    odLOAname: string;
-    odLOAcolor: string;
-  };
-  odLOAselectedElementIds?: string[];
+	odLOApointer: Point;
+	odLOAuser: {
+		odLOAid: string;
+		odLOAname: string;
+		odLOAcolor: string;
+	};
+	odLOAselectedElementIds?: string[];
 }
 
 /**
  * Canvas viewport state
  */
 export interface ViewportState {
-  /** Scroll offset X */
-  scrollX: number;
-  /** Scroll offset Y */
-  scrollY: number;
-  /** Zoom level (1 = 100%) */
-  zoom: number;
+	/** Scroll offset X */
+	scrollX: number;
+	/** Scroll offset Y */
+	scrollY: number;
+	/** Zoom level (1 = 100%) */
+	zoom: number;
 }
 
 /**
  * Application state for the canvas
  */
 export interface AppState {
-  /** Currently selected tool */
-  activeTool: Tool;
-  /** Current stroke color */
-  currentStrokeColor: string;
-  /** Current background color */
-  currentBackgroundColor: string;
-  /** Current stroke width */
-  currentStrokeWidth: number;
-  /** Current stroke style */
-  currentStrokeStyle: StrokeStyle;
-  /** Current fill style */
-  currentFillStyle: FillStyle;
-  /** Current opacity */
-  currentOpacity: number;
-  /** Current font size */
-  currentFontSize: number;
-  /** Current font family */
-  currentFontFamily: number;
-  /** Selected element IDs */
-  selectedElementIds: Record<string, boolean>;
-  /** Viewport state */
-  viewport: ViewportState;
-  /** Whether currently dragging */
-  isDragging: boolean;
-  /** Whether currently resizing */
-  isResizing: boolean;
-  /** Whether currently drawing */
-  isDrawing: boolean;
-  /** Cursor position */
-  cursorPosition: Point | null;
+	/** Currently selected tool */
+	activeTool: Tool;
+	/** Current stroke color */
+	currentStrokeColor: string;
+	/** Current background color */
+	currentBackgroundColor: string;
+	/** Current stroke width */
+	currentStrokeWidth: number;
+	/** Current stroke style */
+	currentStrokeStyle: StrokeStyle;
+	/** Current fill style */
+	currentFillStyle: FillStyle;
+	/** Current opacity */
+	currentOpacity: number;
+	/** Current font size */
+	currentFontSize: number;
+	/** Current font family */
+	currentFontFamily: number;
+	/** Selected element IDs */
+	selectedElementIds: Record<string, boolean>;
+	/** Viewport state */
+	viewport: ViewportState;
+	/** Whether currently dragging */
+	isDragging: boolean;
+	/** Whether currently resizing */
+	isResizing: boolean;
+	/** Whether currently drawing */
+	isDrawing: boolean;
+	/** Cursor position */
+	cursorPosition: Point | null;
 }
 
 // ============================================================================
@@ -358,47 +358,47 @@ export interface AppState {
  * WebSocket message types for sync protocol
  */
 export type SyncMessageType =
-  | "sync-update" // Yjs document update
-  | "awareness" // Awareness update (cursors)
-  | "join-room" // Join room request
-  | "leave-room" // Leave room notification
-  | "room-state" // Full room state snapshot
-  | "error"; // Error message
+	| "sync-update" // Yjs document update
+	| "awareness" // Awareness update (cursors)
+	| "join-room" // Join room request
+	| "leave-room" // Leave room notification
+	| "room-state" // Full room state snapshot
+	| "error"; // Error message
 
 /**
  * Base sync message structure
  */
 export interface SyncMessage {
-  type: SyncMessageType;
-  roomId: string;
-  timestamp: number;
+	type: SyncMessageType;
+	roomId: string;
+	timestamp: number;
 }
 
 /**
  * Yjs document update message
  */
 export interface SyncUpdateMessage extends SyncMessage {
-  type: "sync-update";
-  /** Binary encoded Yjs update */
-  update: Uint8Array;
+	type: "sync-update";
+	/** Binary encoded Yjs update */
+	update: Uint8Array;
 }
 
 /**
  * Awareness update message
  */
 export interface AwarenessMessage extends SyncMessage {
-  type: "awareness";
-  /** User cursor and selection state */
-  awareness: UserCursor;
+	type: "awareness";
+	/** User cursor and selection state */
+	awareness: UserCursor;
 }
 
 /**
  * Room join request
  */
 export interface JoinRoomMessage extends SyncMessage {
-  type: "join-room";
-  userId: string;
-  userName: string;
+	type: "join-room";
+	userId: string;
+	userName: string;
 }
 
 // ============================================================================
@@ -409,19 +409,19 @@ export interface JoinRoomMessage extends SyncMessage {
  * History entry for undo/redo
  */
 export interface HistoryEntry {
-  elements: CanvasElement[];
-  appState: Partial<AppState>;
-  timestamp: number;
+	elements: CanvasElement[];
+	appState: Partial<AppState>;
+	timestamp: number;
 }
 
 /**
  * History state
  */
 export interface HistoryState {
-  /** Undo stack */
-  undoStack: HistoryEntry[];
-  /** Redo stack */
-  redoStack: HistoryEntry[];
+	/** Undo stack */
+	undoStack: HistoryEntry[];
+	/** Redo stack */
+	redoStack: HistoryEntry[];
 }
 
 // ============================================================================
@@ -432,22 +432,22 @@ export interface HistoryState {
  * Collaborator information
  */
 export interface Collaborator {
-  id: string;
-  name: string;
-  color: string;
-  cursor: Point | null;
-  selectedElementIds: string[];
-  isCurrentUser: boolean;
+	id: string;
+	name: string;
+	color: string;
+	cursor: Point | null;
+	selectedElementIds: string[];
+	isCurrentUser: boolean;
 }
 
 /**
  * Room state
  */
 export interface RoomState {
-  roomId: string;
-  collaborators: Map<string, Collaborator>;
-  isConnected: boolean;
-  isSynced: boolean;
+	roomId: string;
+	collaborators: Map<string, Collaborator>;
+	isConnected: boolean;
+	isSynced: boolean;
 }
 
 // ============================================================================
@@ -455,28 +455,28 @@ export interface RoomState {
 // ============================================================================
 
 export const DEFAULT_ELEMENT_PROPS = {
-  strokeColor: "#1e1e1e",
-  backgroundColor: "transparent",
-  strokeWidth: 2,
-  strokeStyle: "solid" as StrokeStyle,
-  fillStyle: "solid" as FillStyle,
-  opacity: 100,
-  roughness: 1,
-  angle: 0,
-  locked: false,
+	strokeColor: "#1e1e1e",
+	backgroundColor: "transparent",
+	strokeWidth: 2,
+	strokeStyle: "solid" as StrokeStyle,
+	fillStyle: "solid" as FillStyle,
+	opacity: 100,
+	roughness: 1,
+	angle: 0,
+	locked: false,
 } as const;
 
 export const DEFAULT_FONT_SIZE = 20;
 export const DEFAULT_FONT_FAMILY = 1; // Virgil (hand-drawn)
 
 export const COLORS = {
-  stroke: ["#1e1e1e", "#e03131", "#2f9e44", "#1971c2", "#f08c00", "#9c36b5"],
-  background: [
-    "transparent",
-    "#ffc9c9",
-    "#b2f2bb",
-    "#a5d8ff",
-    "#ffec99",
-    "#eebefa",
-  ],
+	stroke: ["#1e1e1e", "#e03131", "#2f9e44", "#1971c2", "#f08c00", "#9c36b5"],
+	background: [
+		"transparent",
+		"#ffc9c9",
+		"#b2f2bb",
+		"#a5d8ff",
+		"#ffec99",
+		"#eebefa",
+	],
 } as const;
