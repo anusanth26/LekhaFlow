@@ -2,17 +2,19 @@ import { CreateCanvasSchema, UpdateCanvasSchema } from "@repo/common";
 import { HttpError, JSONResponse } from "@repo/http-core";
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { createCanvasService, updateCanvasService } from "../services/canvas.js";
+import {
+	createCanvasService,
+	updateCanvasService,
+} from "../services/canvas.js";
 
 export const createCanvas = async (req: Request, res: Response) => {
-
 	console.log("Request Body:", req.body);
 	const parsedData = CreateCanvasSchema.safeParse(req.body);
 
 	if (!parsedData.success) {
 		throw new HttpError(
 			"Validation Failed: " +
-			(parsedData.error.issues[0]?.message ?? "Invalid input"),
+				(parsedData.error.issues[0]?.message ?? "Invalid input"),
 			StatusCodes.BAD_REQUEST,
 		);
 	}
@@ -42,7 +44,7 @@ export const updateCanvas = async (req: Request, res: Response) => {
 	if (!parsedData.success) {
 		throw new HttpError(
 			"Validation Failed: " +
-			(parsedData.error.issues[0]?.message ?? "Invalid input"),
+				(parsedData.error.issues[0]?.message ?? "Invalid input"),
 			StatusCodes.BAD_REQUEST,
 		);
 	}
