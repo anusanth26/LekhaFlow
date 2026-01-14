@@ -11,7 +11,10 @@
 		"check-types": "next typegen && tsc --noEmit"
 	},
 	"dependencies": {
+		"@hocuspocus/provider": "^2.14.0",
+		"@repo/common": "workspace:*",
 		"@repo/ui": "workspace:*",
+		"@supabase/supabase-js": "^2.47.0",
 		"@types/uuid": "^11.0.0",
 		"konva": "^10.0.12",
 		"lucide-react": "^0.562.0",
@@ -20,11 +23,13 @@
 		"react-dom": "^19.2.0",
 		"react-konva": "^19.2.1",
 		"uuid": "^13.0.0",
-		"y-websocket": "^3.0.0",
-		"yjs": "^13.6.29"
+		"yjs": "^13.6.29",
+		"zustand": "^5.0.0"
 	},
 	"devDependencies": {
 		"@repo/eslint-config": "workspace:*",
+		"@repo/supabase": "workspace:*",
+		"@repo/config": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
 		"@tailwindcss/postcss": "^4.1.18",
 		"@types/node": "^22.15.3",
