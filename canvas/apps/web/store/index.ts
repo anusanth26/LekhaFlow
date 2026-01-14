@@ -1,1 +1,7 @@
-export { useCanvasStore, useSelectedElements, useElementsArray, useCollaboratorsArray, useIsElementSelected } from "./canvas-store";
+export {
+	useCanvasStore,
+	useCollaboratorsArray,
+	useElementsArray,
+	useIsElementSelected,
+	useSelectedElements,
+} from "./canvas-store";
