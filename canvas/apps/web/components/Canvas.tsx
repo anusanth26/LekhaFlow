@@ -384,7 +384,7 @@ export function Canvas({ roomId }: { roomId: string }) {
 						style={{ backgroundColor: myIdentity.color }}
 						title={`You (${myIdentity.name})`}
 					>
-						{myIdentity.name[0]}
+						{myIdentity.name?.[0] ?? "?"}
 					</div>
 					{cursors.map((c) => (
 						<div
