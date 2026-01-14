@@ -1,0 +1,24 @@
+meta {
+  name: CreateCanvas
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8000/api/v1/canvas/create-canvas
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6IjUwNTIzNjM4LWZhYTItNGVhMy04NTU0LTU4MGVmNDRhMTJkMCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2toYWpzeG5kdHF6ZmtkbnB3cWRrLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI2OGZlMTU0MS00ZTk0LTQ0ZTctYjJjOS0wNTY0ZDkwY2U1NzgiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzY4MzE5ODAzLCJpYXQiOjE3NjgzMTYyMDMsImVtYWlsIjoicmlzaGlAZ21haWwuY29tIiwicGhvbmUiOiIiLCJhcHBfbWV0YWRhdGEiOnsicHJvdmlkZXIiOiJlbWFpbCIsInByb3ZpZGVycyI6WyJlbWFpbCJdfSwidXNlcl9tZXRhZGF0YSI6eyJlbWFpbCI6InJpc2hpQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJuYW1lIjoiUmlzaGlpa2VzaCIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiNjhmZTE1NDEtNGU5NC00NGU3LWIyYzktMDU2NGQ5MGNlNTc4In0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NjgzMTYyMDN9XSwic2Vzc2lvbl9pZCI6IjdlYmY3YjgyLTlkMzQtNDAxYS05YjY1LTcxMTgzZWIwODFlMiIsImlzX2Fub255bW91cyI6ZmFsc2V9.XMKTqrgGhBVqBirGUL7EYxNY4XnG3r_EfjjgoXLDV_3l2qF3DNLoF7_Lg85C3CZZ3HCXNetztjRfmFqz6L7_Uw
+}
+
+body:json {
+  {
+    "name": "My First Canvas",
+    "isPublic": true,
+    "userId": "68fe1541-4e94-44e7-b2c9-0564d90ce578"
+  }
+}

@@ -138,46 +138,17 @@ export default function RoomPage({
 		);
 	}
 
-	// Error state
-	if (error) {
-		return (
-			<div
-				style={{
-					width: "100vw",
-					height: "100vh",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: "#fef2f2",
-					flexDirection: "column",
-					gap: "16px",
-				}}
-			>
-				<p style={{ color: "#dc2626", fontSize: "16px", fontWeight: 500 }}>
-					{error}
-				</p>
-				<button
-					type="button"
-					onClick={() => window.location.reload()}
-					style={{
-						padding: "8px 16px",
-						backgroundColor: "#3b82f6",
-						color: "white",
-						border: "none",
-						borderRadius: "8px",
-						cursor: "pointer",
-						fontSize: "14px",
-					}}
-				>
-					Retry
-				</button>
-			</div>
-		);
-	}
+const Canvas = dynamic(
+	() => import("../../../components/Canvas").then((mod) => mod.Canvas),
+	{
+		ssr: false,
+	},
+);
 
+export default function RoomPage({ params }: { params: { roomId: string } }) {
 	return (
 		<main style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
-			<Canvas roomId={roomId} token={token} />
+			<Canvas roomId={params.roomId} />
 		</main>
 	);
 }
