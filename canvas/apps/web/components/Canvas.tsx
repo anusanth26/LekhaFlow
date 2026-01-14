@@ -158,8 +158,8 @@ function renderElement(
 					key={element.id}
 					{...commonProps}
 					{...strokeProps}
-					radiusX={element.width / 2}
-					radiusY={element.height / 2}
+					radiusX={Math.abs(element.width) / 2}
+					radiusY={Math.abs(element.height) / 2}
 					offsetX={-element.width / 2}
 					offsetY={-element.height / 2}
 					fill={
