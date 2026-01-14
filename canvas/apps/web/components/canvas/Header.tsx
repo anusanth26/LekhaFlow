@@ -70,7 +70,7 @@ function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 			<div
 				style={{
 					position: "fixed",
-					top: "160px",
+					top: "200px",
 					right: "16px",
 					width: "280px",
 					backgroundColor: "white",
