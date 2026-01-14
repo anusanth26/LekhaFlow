@@ -56,30 +56,93 @@ export type Database = {
 					},
 				];
 			};
+			Canvas: {
+				Row: {
+					createdAt: string | null;
+					data: Json | null;
+					id: string;
+					name: string | null;
+					updatedAt: string | null;
+					userId: string | null;
+				};
+				Insert: {
+					createdAt?: string | null;
+					data?: Json | null;
+					id?: string;
+					name?: string | null;
+					updatedAt?: string | null;
+					userId?: string | null;
+				};
+				Update: {
+					createdAt?: string | null;
+					data?: Json | null;
+					id?: string;
+					name?: string | null;
+					updatedAt?: string | null;
+					userId?: string | null;
+				};
+				Relationships: [];
+			};
+			canvas_collaborators: {
+				Row: {
+					canvas_id: string;
+					created_at: string | null;
+					role: string;
+					user_id: string;
+				};
+				Insert: {
+					canvas_id: string;
+					created_at?: string | null;
+					role: string;
+					user_id: string;
+				};
+				Update: {
+					canvas_id?: string;
+					created_at?: string | null;
+					role?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "canvas_collaborators_canvas_id_fkey";
+						columns: ["canvas_id"];
+						isOneToOne: false;
+						referencedRelation: "canvases";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "canvas_collaborators_user_id_fkey";
+						columns: ["user_id"];
+						isOneToOne: false;
+						referencedRelation: "users";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			canvas_versions: {
 				Row: {
 					canvas_id: string;
 					created_at: string | null;
 					creator_id: string | null;
 					id: string;
-					name: string;
-					snapshot: string;
+					name: string | null;
+					snapshot: Json;
 				};
 				Insert: {
 					canvas_id: string;
 					created_at?: string | null;
 					creator_id?: string | null;
 					id?: string;
-					name: string;
-					snapshot: string;
+					name?: string | null;
+					snapshot: Json;
 				};
 				Update: {
 					canvas_id?: string;
 					created_at?: string | null;
 					creator_id?: string | null;
 					id?: string;
-					name?: string;
-					snapshot?: string;
+					name?: string | null;
+					snapshot?: Json;
 				};
 				Relationships: [
 					{
@@ -101,7 +164,7 @@ export type Database = {
 			canvases: {
 				Row: {
 					created_at: string | null;
-					data: string | null;
+					data: Json | null;
 					deleted_at: string | null;
 					folder_id: string | null;
 					id: string;
@@ -116,14 +179,14 @@ export type Database = {
 				};
 				Insert: {
 					created_at?: string | null;
-					data?: string | null;
+					data?: Json | null;
 					deleted_at?: string | null;
 					folder_id?: string | null;
 					id?: string;
 					is_deleted?: boolean | null;
 					is_public?: boolean | null;
 					last_accessed_at?: string | null;
-					name: string;
+					name?: string;
 					owner_id: string;
 					slug?: string | null;
 					thumbnail_url?: string | null;
@@ -131,7 +194,7 @@ export type Database = {
 				};
 				Update: {
 					created_at?: string | null;
-					data?: string | null;
+					data?: Json | null;
 					deleted_at?: string | null;
 					folder_id?: string | null;
 					id?: string;
