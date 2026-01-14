@@ -1,1 +1,0 @@
-export { useYjsSync } from "./useYjsSync";
