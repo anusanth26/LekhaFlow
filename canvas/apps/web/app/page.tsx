@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 import { ArrowRight, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 export default function Home() {
 	const router = useRouter();
@@ -32,9 +32,9 @@ export default function Home() {
 
 				{/* Body */}
 				<div className="p-8 space-y-6">
-
 					{/* Create Action */}
 					<button
+						type="button"
 						onClick={createRoom}
 						className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 group"
 					>
@@ -47,14 +47,19 @@ export default function Home() {
 							<span className="w-full border-t border-gray-300" />
 						</div>
 						<div className="relative flex justify-center text-sm">
-							<span className="bg-white px-2 text-gray-500">Or join existing</span>
+							<span className="bg-white px-2 text-gray-500">
+								Or join existing
+							</span>
 						</div>
 					</div>
 
 					{/* Join Form */}
 					<form onSubmit={joinRoom} className="space-y-4">
 						<div>
-							<label htmlFor="roomId" className="block text-sm font-medium text-gray-700 mb-1">
+							<label
+								htmlFor="roomId"
+								className="block text-sm font-medium text-gray-700 mb-1"
+							>
 								Room ID
 							</label>
 							<input
