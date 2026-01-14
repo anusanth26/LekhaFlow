@@ -1,3 +1,5 @@
+"use client";
+
 import dynamic from "next/dynamic";
 
 const Canvas = dynamic(() => import("../../../components/Canvas").then((mod) => mod.Canvas), {
