@@ -1,10 +1,10 @@
-# Canvas Store
+# LekhaFlow
 
 This directory contains the state management for the LekhaFlow canvas application using Zustand.
 
 ## Overview
 
-The canvas store manages all application state including canvas elements, UI controls, collaboration data, and synchronization status. It integrates with Yjs for real-time collaborative editing.
+The Lekha Flow manages all application state including canvas elements, UI controls, collaboration data, and synchronization status. It integrates with Yjs for real-time collaborative editing.
 
 ## Architecture
 
