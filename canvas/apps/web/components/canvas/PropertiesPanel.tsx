@@ -9,7 +9,6 @@
 "use client";
 
 import { ChevronRight, Palette, X } from "lucide-react";
-import type React from "react";
 import { useState } from "react";
 import { useCanvasStore } from "../../store/canvas-store";
 
@@ -54,380 +53,189 @@ export function PropertiesPanel() {
 		setOpacity,
 	} = useCanvasStore();
 
-	const panelStyle: React.CSSProperties = {
-		position: "absolute",
-		top: "80px",
-		right: "16px",
-		zIndex: 50,
-	};
-
-	const containerStyle: React.CSSProperties = {
-		backgroundColor: "white",
-		borderRadius: "16px",
-		boxShadow: "0 10px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
-		border: "1px solid #e5e7eb",
-	};
-
 	if (isCollapsed) {
 		return (
-			<div style={panelStyle}>
+			<div className="absolute top-20 right-4 z-50">
 				<button
 					type="button"
 					onClick={() => setIsCollapsed(false)}
 					title="Style Panel"
-					style={{
-						...containerStyle,
-						padding: "12px",
-						cursor: "pointer",
-						display: "flex",
-						alignItems: "center",
-						gap: "8px",
-						border: "1px solid #e5e7eb",
-						transition: "all 0.15s ease",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.backgroundColor = "#f8fafc";
-						e.currentTarget.style.borderColor = "#8b5cf6";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.backgroundColor = "white";
-						e.currentTarget.style.borderColor = "#e5e7eb";
-					}}
+					className="glass-card-elevated rounded-2xl px-4 py-3 cursor-pointer flex items-center gap-2.5 transition-all duration-200 hover:bg-gray-50 hover:border-violet-300 hover:-translate-x-0.5 border-none"
 				>
-					<Palette size={20} color="#8b5cf6" />
-					<span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>
-						Style
-					</span>
-					<ChevronRight size={16} color="#9ca3af" />
+					<Palette size={18} className="text-violet-500" />
+					<span className="text-[13px] font-semibold text-gray-600">Style</span>
+					<ChevronRight size={14} className="text-gray-400" />
 				</button>
 			</div>
 		);
 	}
 
 	return (
-		<div style={panelStyle}>
-			<div style={{ ...containerStyle, width: "240px", padding: "16px" }}>
+		<div className="absolute top-20 right-4 z-50">
+			<div className="glass-card-elevated rounded-2xl w-[232px] p-4 animate-scale-in">
 				{/* Header */}
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "space-between",
-						marginBottom: "16px",
-					}}
-				>
-					<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-						<div
-							style={{
-								width: "32px",
-								height: "32px",
-								borderRadius: "8px",
-								backgroundColor: "#8b5cf615",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Palette size={18} color="#8b5cf6" />
+				<div className="flex items-center justify-between mb-4">
+					<div className="flex items-center gap-2">
+						<div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+							<Palette size={16} className="text-violet-500" />
 						</div>
-						<span
-							style={{ fontSize: "14px", fontWeight: 700, color: "#1f2937" }}
-						>
-							Style
-						</span>
+						<span className="text-sm font-bold text-gray-800">Style</span>
 					</div>
 					<button
 						type="button"
 						onClick={() => setIsCollapsed(true)}
-						style={{
-							padding: "6px",
-							borderRadius: "8px",
-							border: "none",
-							backgroundColor: "transparent",
-							cursor: "pointer",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-						}}
-						onMouseEnter={(e) => {
-							e.currentTarget.style.backgroundColor = "#f1f5f9";
-						}}
-						onMouseLeave={(e) => {
-							e.currentTarget.style.backgroundColor = "transparent";
-						}}
+						className="p-1.5 rounded-lg bg-transparent border-none cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center"
 					>
-						<X size={18} color="#9ca3af" />
+						<X size={16} className="text-gray-400" />
 					</button>
 				</div>
 
 				{/* Stroke Color */}
-				<div style={{ marginBottom: "16px" }}>
-					<div
-						style={{
-							fontSize: "12px",
-							fontWeight: 600,
-							color: "#6b7280",
-							marginBottom: "10px",
-							textTransform: "uppercase",
-							letterSpacing: "0.5px",
-						}}
-					>
-						Stroke
-					</div>
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "repeat(4, 1fr)",
-							gap: "8px",
-						}}
-					>
-						{STROKE_COLORS.map(({ color, name }) => (
-							<button
-								type="button"
-								key={color}
-								onClick={() => setStrokeColor(color)}
-								title={name}
-								style={{
-									width: "44px",
-									height: "44px",
-									borderRadius: "10px",
-									border:
-										currentStrokeColor === color
-											? "3px solid #8b5cf6"
-											: "2px solid #e5e7eb",
-									backgroundColor: color,
-									cursor: "pointer",
-									transition: "all 0.15s ease",
-									boxShadow:
-										currentStrokeColor === color
-											? "0 0 0 3px #8b5cf630"
-											: "none",
-								}}
-							/>
-						))}
-					</div>
+				<SectionLabel>Stroke</SectionLabel>
+				<div className="grid grid-cols-4 gap-2 mb-4">
+					{STROKE_COLORS.map(({ color, name }) => (
+						<button
+							type="button"
+							key={color}
+							onClick={() => setStrokeColor(color)}
+							title={name}
+							className={`w-full aspect-square rounded-lg cursor-pointer transition-all border-none ${
+								currentStrokeColor === color
+									? "ring-2 ring-violet-500 ring-offset-2 scale-95"
+									: "ring-1 ring-gray-200 hover:ring-gray-300 hover:scale-95"
+							}`}
+							style={{ backgroundColor: color }}
+						/>
+					))}
 				</div>
 
 				{/* Background Color */}
-				<div style={{ marginBottom: "16px" }}>
-					<div
-						style={{
-							fontSize: "12px",
-							fontWeight: 600,
-							color: "#6b7280",
-							marginBottom: "10px",
-							textTransform: "uppercase",
-							letterSpacing: "0.5px",
-						}}
-					>
-						Fill
-					</div>
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "repeat(4, 1fr)",
-							gap: "8px",
-						}}
-					>
-						{BACKGROUND_COLORS.map(({ color, name }) => (
-							<button
-								type="button"
-								key={color}
-								onClick={() => setBackgroundColor(color)}
-								title={name}
-								style={{
-									width: "44px",
-									height: "44px",
-									borderRadius: "10px",
-									border:
-										currentBackgroundColor === color
-											? "3px solid #8b5cf6"
-											: "2px solid #e5e7eb",
-									backgroundColor: color === "transparent" ? "white" : color,
-									backgroundImage:
-										color === "transparent"
-											? "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)"
-											: "none",
-									backgroundSize: color === "transparent" ? "8px 8px" : "auto",
-									backgroundPosition:
-										color === "transparent"
-											? "0 0, 0 4px, 4px -4px, -4px 0px"
-											: "0 0",
-									cursor: "pointer",
-									transition: "all 0.15s ease",
-									boxShadow:
-										currentBackgroundColor === color
-											? "0 0 0 3px #8b5cf630"
-											: "none",
-								}}
-							/>
-						))}
-					</div>
+				<SectionLabel>Fill</SectionLabel>
+				<div className="grid grid-cols-4 gap-2 mb-4">
+					{BACKGROUND_COLORS.map(({ color, name }) => (
+						<button
+							type="button"
+							key={color}
+							onClick={() => setBackgroundColor(color)}
+							title={name}
+							className={`w-full aspect-square rounded-lg cursor-pointer transition-all border-none ${
+								currentBackgroundColor === color
+									? "ring-2 ring-violet-500 ring-offset-2 scale-95"
+									: "ring-1 ring-gray-200 hover:ring-gray-300 hover:scale-95"
+							}`}
+							style={{
+								backgroundColor: color === "transparent" ? "white" : color,
+								backgroundImage:
+									color === "transparent"
+										? "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)"
+										: "none",
+								backgroundSize: color === "transparent" ? "8px 8px" : "auto",
+								backgroundPosition:
+									color === "transparent"
+										? "0 0, 0 4px, 4px -4px, -4px 0px"
+										: "0 0",
+							}}
+						/>
+					))}
 				</div>
 
 				{/* Stroke Width */}
-				<div style={{ marginBottom: "16px" }}>
-					<div
-						style={{
-							fontSize: "12px",
-							fontWeight: 600,
-							color: "#6b7280",
-							marginBottom: "10px",
-							textTransform: "uppercase",
-							letterSpacing: "0.5px",
-						}}
-					>
-						Stroke Width
-					</div>
-					<div style={{ display: "flex", gap: "8px" }}>
-						{STROKE_WIDTHS.map((width) => (
-							<button
-								type="button"
-								key={width}
-								onClick={() => setStrokeWidth(width)}
-								title={`${width}px`}
+				<SectionLabel>Stroke Width</SectionLabel>
+				<div className="flex gap-2 mb-4">
+					{STROKE_WIDTHS.map((width) => (
+						<button
+							type="button"
+							key={width}
+							onClick={() => setStrokeWidth(width)}
+							title={`${width}px`}
+							className={`flex-1 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-all border-none ${
+								currentStrokeWidth === width
+									? "bg-violet-50 ring-2 ring-violet-500"
+									: "bg-white ring-1 ring-gray-200 hover:ring-gray-300"
+							}`}
+						>
+							<div
+								className="rounded-full"
 								style={{
-									flex: 1,
-									height: "40px",
-									borderRadius: "10px",
-									border:
-										currentStrokeWidth === width
-											? "2px solid #8b5cf6"
-											: "2px solid #e5e7eb",
+									width: Math.max(4, width * 2),
+									height: Math.max(4, width * 2),
 									backgroundColor:
-										currentStrokeWidth === width ? "#8b5cf610" : "white",
-									cursor: "pointer",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									transition: "all 0.15s ease",
+										currentStrokeWidth === width ? "#8b5cf6" : "#94a3b8",
 								}}
-							>
-								<div
-									style={{
-										width: Math.max(4, width * 2),
-										height: Math.max(4, width * 2),
-										borderRadius: "50%",
-										backgroundColor:
-											currentStrokeWidth === width ? "#8b5cf6" : "#64748b",
-									}}
-								/>
-							</button>
-						))}
-					</div>
+							/>
+						</button>
+					))}
 				</div>
 
 				{/* Stroke Style */}
-				<div style={{ marginBottom: "16px" }}>
-					<div
-						style={{
-							fontSize: "12px",
-							fontWeight: 600,
-							color: "#6b7280",
-							marginBottom: "10px",
-							textTransform: "uppercase",
-							letterSpacing: "0.5px",
-						}}
-					>
-						Line Style
-					</div>
-					<div style={{ display: "flex", gap: "8px" }}>
-						{(["solid", "dashed", "dotted"] as StrokeStyle[]).map((style) => (
-							<button
-								type="button"
-								key={style}
-								onClick={() => setStrokeStyle(style)}
-								title={style.charAt(0).toUpperCase() + style.slice(1)}
-								style={{
-									flex: 1,
-									height: "40px",
-									borderRadius: "10px",
-									border:
-										currentStrokeStyle === style
-											? "2px solid #8b5cf6"
-											: "2px solid #e5e7eb",
-									backgroundColor:
-										currentStrokeStyle === style ? "#8b5cf610" : "white",
-									cursor: "pointer",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									transition: "all 0.15s ease",
-								}}
-							>
-								<svg width="32" height="3" viewBox="0 0 32 3" role="img">
-									<title>{style} line</title>
-									<line
-										x1="0"
-										y1="1.5"
-										x2="32"
-										y2="1.5"
-										stroke={
-											currentStrokeStyle === style ? "#8b5cf6" : "#64748b"
-										}
-										strokeWidth="2"
-										strokeDasharray={
-											style === "dashed"
-												? "6 4"
-												: style === "dotted"
-													? "2 3"
-													: "none"
-										}
-									/>
-								</svg>
-							</button>
-						))}
-					</div>
+				<SectionLabel>Line Style</SectionLabel>
+				<div className="flex gap-2 mb-4">
+					{(["solid", "dashed", "dotted"] as StrokeStyle[]).map((style) => (
+						<button
+							type="button"
+							key={style}
+							onClick={() => setStrokeStyle(style)}
+							title={style.charAt(0).toUpperCase() + style.slice(1)}
+							className={`flex-1 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-all border-none ${
+								currentStrokeStyle === style
+									? "bg-violet-50 ring-2 ring-violet-500"
+									: "bg-white ring-1 ring-gray-200 hover:ring-gray-300"
+							}`}
+						>
+							<svg width="28" height="3" viewBox="0 0 28 3" role="img">
+								<title>{style} line</title>
+								<line
+									x1="0"
+									y1="1.5"
+									x2="28"
+									y2="1.5"
+									stroke={currentStrokeStyle === style ? "#8b5cf6" : "#94a3b8"}
+									strokeWidth="2"
+									strokeDasharray={
+										style === "dashed"
+											? "6 4"
+											: style === "dotted"
+												? "2 3"
+												: "none"
+									}
+								/>
+							</svg>
+						</button>
+					))}
 				</div>
 
 				{/* Opacity */}
-				<div>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "space-between",
-							marginBottom: "10px",
-						}}
-					>
-						<span
-							style={{
-								fontSize: "12px",
-								fontWeight: 600,
-								color: "#6b7280",
-								textTransform: "uppercase",
-								letterSpacing: "0.5px",
-							}}
-						>
-							Opacity
-						</span>
-						<span
-							style={{
-								fontSize: "13px",
-								fontWeight: 700,
-								color: "#8b5cf6",
-								fontVariantNumeric: "tabular-nums",
-							}}
-						>
-							{currentOpacity}%
-						</span>
-					</div>
-					<input
-						type="range"
-						min="10"
-						max="100"
-						value={currentOpacity}
-						onChange={(e) => setOpacity(Number(e.target.value))}
-						style={{
-							width: "100%",
-							height: "6px",
-							borderRadius: "3px",
-							cursor: "pointer",
-							accentColor: "#8b5cf6",
-						}}
-					/>
+				<div className="flex items-center justify-between mb-2">
+					<SectionLabel className="mb-0">Opacity</SectionLabel>
+					<span className="text-xs font-bold text-violet-500 tabular-nums">
+						{currentOpacity}%
+					</span>
 				</div>
+				<input
+					type="range"
+					min="10"
+					max="100"
+					value={currentOpacity}
+					onChange={(e) => setOpacity(Number(e.target.value))}
+					className="w-full cursor-pointer"
+				/>
 			</div>
+		</div>
+	);
+}
+
+function SectionLabel({
+	children,
+	className = "",
+}: {
+	children: React.ReactNode;
+	className?: string;
+}) {
+	return (
+		<div
+			className={`text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5 ${className}`}
+		>
+			{children}
 		</div>
 	);
 }
