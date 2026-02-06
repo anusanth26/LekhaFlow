@@ -9,34 +9,9 @@ const Canvas = dynamic(
 	{
 		ssr: false,
 		loading: () => (
-			<div
-				style={{
-					width: "100vw",
-					height: "100vh",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: "#f8fafc",
-					flexDirection: "column",
-					gap: "16px",
-				}}
-			>
-				<div
-					style={{
-						width: "48px",
-						height: "48px",
-						border: "4px solid #e2e8f0",
-						borderTopColor: "#3b82f6",
-						borderRadius: "50%",
-						animation: "spin 1s linear infinite",
-					}}
-				/>
-				<p style={{ color: "#64748b", fontSize: "14px" }}>Loading canvas...</p>
-				<style>{`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
+			<div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-50 gap-4">
+				<div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+				<p className="text-gray-500 text-sm">Loading canvas...</p>
 			</div>
 		),
 	},
@@ -47,15 +22,12 @@ export default function RoomPage({
 }: {
 	params: Promise<{ roomId: string }>;
 }) {
-	// In Next.js 16+, params is a Promise and must be unwrapped with React.use()
 	const { roomId } = use(params);
 
-	// Auth state
 	const [token, setToken] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	// Fetch session on mount
 	useEffect(() => {
 		const fetchSession = async () => {
 			try {
@@ -69,8 +41,6 @@ export default function RoomPage({
 				}
 
 				if (!session) {
-					// No session: redirect to login page
-					// Pass the current URL as 'next' so user returns here after auth
 					const loginUrl = `/login?next=${encodeURIComponent(`/room/${roomId}`)}`;
 					window.location.href = loginUrl;
 					return;
@@ -87,14 +57,12 @@ export default function RoomPage({
 
 		fetchSession();
 
-		// Listen for auth changes
 		const {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange((_event, session) => {
 			if (session) {
 				setToken(session.access_token);
 			} else {
-				// Session lost: redirect to login
 				const loginUrl = `/login?next=${encodeURIComponent(`/room/${roomId}`)}`;
 				window.location.href = loginUrl;
 			}
@@ -103,71 +71,28 @@ export default function RoomPage({
 		return () => subscription.unsubscribe();
 	}, [roomId]);
 
-	// Loading state
 	if (isLoading) {
 		return (
-			<div
-				style={{
-					width: "100vw",
-					height: "100vh",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: "#f8fafc",
-					flexDirection: "column",
-					gap: "16px",
-				}}
-			>
-				<div
-					style={{
-						width: "48px",
-						height: "48px",
-						border: "4px solid #e2e8f0",
-						borderTopColor: "#3b82f6",
-						borderRadius: "50%",
-						animation: "spin 1s linear infinite",
-					}}
-				/>
-				<p style={{ color: "#64748b", fontSize: "14px" }}>Authenticating...</p>
-				<style>{`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
+			<div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-50 gap-4">
+				<div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+				<p className="text-gray-500 text-sm">Authenticating...</p>
 			</div>
 		);
 	}
 
-	// Error state
 	if (error) {
 		return (
-			<div
-				style={{
-					width: "100vw",
-					height: "100vh",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: "#fef2f2",
-					flexDirection: "column",
-					gap: "16px",
-				}}
-			>
-				<p style={{ color: "#dc2626", fontSize: "16px", fontWeight: 500 }}>
-					{error}
-				</p>
+			<div className="w-screen h-screen flex flex-col items-center justify-center bg-red-50 gap-4">
+				<div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+					<svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+						<path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+					</svg>
+				</div>
+				<p className="text-red-600 text-base font-medium">{error}</p>
 				<button
 					type="button"
 					onClick={() => window.location.reload()}
-					style={{
-						padding: "8px 16px",
-						backgroundColor: "#3b82f6",
-						color: "white",
-						border: "none",
-						borderRadius: "8px",
-						cursor: "pointer",
-						fontSize: "14px",
-					}}
+					className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-xl cursor-pointer transition-colors"
 				>
 					Retry
 				</button>
@@ -176,7 +101,7 @@ export default function RoomPage({
 	}
 
 	return (
-		<main style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
+		<main className="w-screen h-screen overflow-hidden">
 			<Canvas roomId={roomId} token={token} />
 		</main>
 	);

@@ -1,4 +1,4 @@
-import { Canvas } from "../../../components/Canvas";
+import { CanvasAuthWrapper } from "../../../components/CanvasAuthWrapper";
 
 export default async function CanvasPage({
 	params,
@@ -7,5 +7,5 @@ export default async function CanvasPage({
 }) {
 	const roomId = (await params).roomId;
 
-	return <Canvas roomId={roomId} />;
+	return <CanvasAuthWrapper roomId={roomId} />;
 }
