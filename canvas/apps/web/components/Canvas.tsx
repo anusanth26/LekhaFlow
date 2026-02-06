@@ -81,6 +81,8 @@ import { ExportModal } from "./canvas/ExportModal";
 import { HeaderLeft, HeaderRight } from "./canvas/Header";
 import { HelpPanel } from "./canvas/HelpPanel";
 import { PropertiesPanel } from "./canvas/PropertiesPanel";
+import type { HandlePosition } from "./canvas/ResizeHandles";
+import { ResizeHandles } from "./canvas/ResizeHandles";
 // Import components directly to avoid circular dependencies through barrel exports
 import { Toolbar } from "./canvas/Toolbar";
 import { ZoomControls } from "./canvas/ZoomControls";
@@ -326,6 +328,15 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 	// Export modal state
 	const [showExportModal, setShowExportModal] = useState(false);
+
+	// Resize state tracking
+	const [resizeState, setResizeState] = useState<{
+		elementId: string;
+		handle: HandlePosition;
+		startX: number;
+		startY: number;
+		originalElement: CanvasElement;
+	} | null>(null);
 
 	// Reconnect function
 	const handleReconnect = useCallback(() => {
@@ -685,6 +696,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 				case "rectangle": {
 					setIsDrawing(true);
+					setInteractionStartPoint(point);
 					const newRect = createRectangle(point.x, point.y, 0, 0, {
 						strokeColor: currentStrokeColor,
 						backgroundColor: currentBackgroundColor,
@@ -698,6 +710,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 				case "ellipse": {
 					setIsDrawing(true);
+					setInteractionStartPoint(point);
 					const newEllipse = createEllipse(point.x, point.y, 0, 0, {
 						strokeColor: currentStrokeColor,
 						backgroundColor: currentBackgroundColor,
@@ -711,6 +724,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 				case "line": {
 					setIsDrawing(true);
+					setInteractionStartPoint(point);
 					const newLine = createLine(point.x, point.y, [{ x: 0, y: 0 }], {
 						strokeColor: currentStrokeColor,
 						strokeWidth: currentStrokeWidth,
@@ -723,6 +737,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 				case "arrow": {
 					setIsDrawing(true);
+					setInteractionStartPoint(point);
 					const newArrow = createArrow(point.x, point.y, [{ x: 0, y: 0 }], {
 						strokeColor: currentStrokeColor,
 						strokeWidth: currentStrokeWidth,
@@ -735,6 +750,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 				case "freedraw": {
 					setIsDrawing(true);
+					setInteractionStartPoint(point);
 					freedrawPointsRef.current = [[0, 0]];
 					const newFreedraw = createFreedraw(point.x, point.y, [[0, 0]], {
 						strokeColor: currentStrokeColor,
@@ -847,9 +863,19 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 				case "freedraw": {
 					freedrawPointsRef.current.push([dx, dy]);
+					// Calculate bounding box for freedraw
+					const points = freedrawPointsRef.current;
+					const xs = points.map((p) => p[0]);
+					const ys = points.map((p) => p[1]);
+					const minX = Math.min(...xs);
+					const maxX = Math.max(...xs);
+					const minY = Math.min(...ys);
+					const maxY = Math.max(...ys);
 					setDrawingElement({
 						...drawingElement,
-						points: [...freedrawPointsRef.current],
+						points: [...points],
+						width: maxX - minX,
+						height: maxY - minY,
 					} as FreedrawElement);
 					break;
 				}
@@ -878,8 +904,18 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	 * 2. Reset drawing state
 	 */
 	const handleMouseUp = useCallback(() => {
+		console.log("[DEBUG] handleMouseUp called");
+		console.log("[DEBUG] isDrawing:", isDrawing);
+		console.log("[DEBUG] drawingElement:", drawingElement);
+
 		// Finalize drawing
 		if (isDrawing && drawingElement) {
+			console.log(
+				"[DEBUG] Width:",
+				drawingElement.width,
+				"Height:",
+				drawingElement.height,
+			);
 			// Only add if element has size
 			if (
 				Math.abs(drawingElement.width) > 5 ||
@@ -897,12 +933,17 @@ export function Canvas({ roomId, token }: CanvasProps) {
 					finalElement.height = Math.abs(finalElement.height);
 				}
 
+				console.log("[DEBUG] About to call addElement with:", finalElement.id);
 				// Add to Yjs - this syncs to all clients!
 				addElement(finalElement);
 
 				// Select the new element
 				setSelectedElementIds(new Set([finalElement.id]));
+			} else {
+				console.log("[DEBUG] Element too small, not adding");
 			}
+		} else {
+			console.log("[DEBUG] Not drawing or no drawingElement");
 		}
 
 		// Reset state
@@ -937,6 +978,135 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	const handleMouseLeave = useCallback(() => {
 		updateCursor(null);
 	}, [updateCursor]);
+
+	// ─────────────────────────────────────────────────────────────────
+	// RESIZE HANDLERS
+	// ─────────────────────────────────────────────────────────────────
+
+	/**
+	 * Handle resize start - Store initial element state
+	 */
+	const handleResizeStart = useCallback(
+		(
+			elementId: string,
+			handle: HandlePosition,
+			e: {
+				target: {
+					getStage: () => {
+						getPointerPosition: () => { x: number; y: number } | null;
+					} | null;
+				};
+			},
+		) => {
+			const element = elements.find((el) => el.id === elementId);
+			if (!element) return;
+
+			const stage = e.target.getStage();
+			const pos = stage?.getPointerPosition();
+			if (!pos) return;
+
+			setResizeState({
+				elementId,
+				handle,
+				startX: pos.x,
+				startY: pos.y,
+				originalElement: { ...element },
+			});
+		},
+		[elements],
+	);
+
+	/**
+	 * Handle resize move - Calculate new dimensions based on handle position
+	 */
+	const handleResizeMove = useCallback(
+		(
+			_elementId: string,
+			_handle: HandlePosition,
+			e: {
+				target: {
+					getStage: () => {
+						getPointerPosition: () => { x: number; y: number } | null;
+					} | null;
+				};
+			},
+		) => {
+			if (!resizeState) return;
+
+			const stage = e.target.getStage();
+			const pos = stage?.getPointerPosition();
+			if (!pos) return;
+
+			const { handle, startX, startY, originalElement } = resizeState;
+			const deltaX = (pos.x - startX) / zoom;
+			const deltaY = (pos.y - startY) / zoom;
+
+			let newX = originalElement.x;
+			let newY = originalElement.y;
+			let newWidth = originalElement.width || 0;
+			let newHeight = originalElement.height || 0;
+
+			// Calculate new dimensions based on which handle is being dragged
+			switch (handle) {
+				case "top-left":
+					newX = originalElement.x + deltaX;
+					newY = originalElement.y + deltaY;
+					newWidth = (originalElement.width || 0) - deltaX;
+					newHeight = (originalElement.height || 0) - deltaY;
+					break;
+				case "top-right":
+					newY = originalElement.y + deltaY;
+					newWidth = (originalElement.width || 0) + deltaX;
+					newHeight = (originalElement.height || 0) - deltaY;
+					break;
+				case "bottom-left":
+					newX = originalElement.x + deltaX;
+					newWidth = (originalElement.width || 0) - deltaX;
+					newHeight = (originalElement.height || 0) + deltaY;
+					break;
+				case "bottom-right":
+					newWidth = (originalElement.width || 0) + deltaX;
+					newHeight = (originalElement.height || 0) + deltaY;
+					break;
+				case "top-center":
+					newY = originalElement.y + deltaY;
+					newHeight = (originalElement.height || 0) - deltaY;
+					break;
+				case "bottom-center":
+					newHeight = (originalElement.height || 0) + deltaY;
+					break;
+				case "left-center":
+					newX = originalElement.x + deltaX;
+					newWidth = (originalElement.width || 0) - deltaX;
+					break;
+				case "right-center":
+					newWidth = (originalElement.width || 0) + deltaX;
+					break;
+			}
+
+			// Ensure minimum dimensions
+			newWidth = Math.max(10, newWidth);
+			newHeight = Math.max(10, newHeight);
+
+			// Update element locally for visual feedback (Yjs sync happens on end)
+			updateElement(resizeState.elementId, {
+				x: newX,
+				y: newY,
+				width: newWidth,
+				height: newHeight,
+			});
+		},
+		[resizeState, zoom, updateElement],
+	);
+
+	/**
+	 * Handle resize end - Final sync to Yjs for other users
+	 */
+	const handleResizeEnd = useCallback((_elementId: string) => {
+		// The updateElement call in handleResizeMove already syncs via Yjs
+		// Clear resize state
+		setResizeState(null);
+	}, []);
 
 	// ─────────────────────────────────────────────────────────────────
 	// RENDER
@@ -1020,22 +1190,22 @@ export function Canvas({ roomId, token }: CanvasProps) {
 					{drawingElement &&
 						renderElement(drawingElement, false, false, () => {})}
 
-					{/* Selection indicator for selected elements */}
+					{/* Selection with resize handles for selected elements */}
 					{activeTool === "selection" &&
 						selectedElementIds.size > 0 &&
 						elements
 							.filter((el) => selectedElementIds.has(el.id))
 							.map((el) => (
-								<Rect
-									key={`selection-${el.id}`}
-									x={el.x - 4}
-									y={el.y - 4}
-									width={(el.width || 0) + 8}
-									height={(el.height || 0) + 8}
-									stroke="#6965db"
-									strokeWidth={1}
-									dash={[4, 4]}
-									listening={false}
+								<ResizeHandles
+									key={`resize-${el.id}`}
+									elementId={el.id}
+									x={el.x}
+									y={el.y}
+									width={el.width || 0}
+									height={el.height || 0}
+									onResizeStart={handleResizeStart}
+									onResizeMove={handleResizeMove}
+									onResizeEnd={handleResizeEnd}
 								/>
 							))}
 				</Layer>
