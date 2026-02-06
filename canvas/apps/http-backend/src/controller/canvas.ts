@@ -5,6 +5,8 @@ import { StatusCodes } from "http-status-codes";
 import {
 	createCanvasService,
 	updateCanvasService,
+	getCanvasesService,
+	deleteCanvasService,
 } from "../services/canvas.js";
 
 export const createCanvas = async (req: Request, res: Response) => {
@@ -14,7 +16,7 @@ export const createCanvas = async (req: Request, res: Response) => {
 	if (!parsedData.success) {
 		throw new HttpError(
 			"Validation Failed: " +
-				(parsedData.error.issues[0]?.message ?? "Invalid input"),
+			(parsedData.error.issues[0]?.message ?? "Invalid input"),
 			StatusCodes.BAD_REQUEST,
 		);
 	}
@@ -44,7 +46,7 @@ export const updateCanvas = async (req: Request, res: Response) => {
 	if (!parsedData.success) {
 		throw new HttpError(
 			"Validation Failed: " +
-				(parsedData.error.issues[0]?.message ?? "Invalid input"),
+			(parsedData.error.issues[0]?.message ?? "Invalid input"),
 			StatusCodes.BAD_REQUEST,
 		);
 	}
@@ -58,4 +60,27 @@ export const updateCanvas = async (req: Request, res: Response) => {
 	await updateCanvasService(roomId, data);
 
 	return JSONResponse(res, StatusCodes.OK, "Canvas updated successfully");
+};
+
+export const getCanvases = async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+	const canvases = await getCanvasesService(req.user.id);
+	return JSONResponse(res, StatusCodes.OK, "Canvases fetched successfully", {
+		canvases,
+	});
+};
+
+export const deleteCanvas = async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+	const { roomId } = req.params;
+	if (!roomId || typeof roomId !== "string") {
+		throw new HttpError("Canvas ID required", StatusCodes.BAD_REQUEST);
+	}
+
+	await deleteCanvasService(roomId, req.user.id);
+	return JSONResponse(res, StatusCodes.OK, "Canvas deleted successfully");
 };

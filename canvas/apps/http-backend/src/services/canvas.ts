@@ -49,3 +49,29 @@ export const updateCanvasService = async (
 		throw new HttpError(error.message, StatusCodes.INTERNAL_SERVER_ERROR);
 	}
 };
+
+export const getCanvasesService = async (userId: string) => {
+	const { data, error } = await supabase
+		.from("canvases")
+		.select("id, name, updated_at, thumbnail_url")
+		.eq("owner_id", userId)
+		.eq("is_deleted", false);
+
+	if (error) {
+		throw new HttpError(error.message, StatusCodes.INTERNAL_SERVER_ERROR);
+	}
+
+	return data;
+};
+
+export const deleteCanvasService = async (canvasId: string, userId: string) => {
+	const { error } = await supabase
+		.from("canvases")
+		.update({ is_deleted: true })
+		.eq("id", canvasId)
+		.eq("owner_id", userId);
+
+	if (error) {
+		throw new HttpError(error.message, StatusCodes.INTERNAL_SERVER_ERROR);
+	}
+};
