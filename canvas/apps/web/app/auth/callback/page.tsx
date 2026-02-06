@@ -18,8 +18,6 @@ export default function AuthCallbackPage() {
 
 	useEffect(() => {
 		const handleAuthCallback = async () => {
-			// Supabase automatically picks up tokens from the URL hash
-			// and creates a session when we call getSession
 			const {
 				data: { session },
 				error: sessionError,
@@ -32,8 +30,6 @@ export default function AuthCallbackPage() {
 			}
 
 			if (!session) {
-				// No session yet - Supabase may still be processing
-				// Wait a bit and check again
 				const {
 					data: { session: retrySession },
 				} = await supabase.auth.getSession();
@@ -44,7 +40,6 @@ export default function AuthCallbackPage() {
 				}
 			}
 
-			// Redirect to the intended destination
 			const next = searchParams.get("next") ?? "/";
 			router.replace(next);
 		};
@@ -54,34 +49,18 @@ export default function AuthCallbackPage() {
 
 	if (error) {
 		return (
-			<div
-				style={{
-					minHeight: "100vh",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					background: "#fef2f2",
-					padding: "20px",
-				}}
-			>
-				<div
-					style={{
-						textAlign: "center",
-						maxWidth: "400px",
-					}}
-				>
-					<p style={{ color: "#dc2626", marginBottom: "16px" }}>{error}</p>
+			<div className="min-h-screen flex items-center justify-center bg-red-50 p-5">
+				<div className="text-center max-w-sm animate-fade-in">
+					<div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+						<svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</div>
+					<p className="text-red-600 mb-4 text-sm">{error}</p>
 					<button
 						type="button"
 						onClick={() => router.push("/login")}
-						style={{
-							padding: "10px 20px",
-							background: "#3b82f6",
-							color: "white",
-							border: "none",
-							borderRadius: "8px",
-							cursor: "pointer",
-						}}
+						className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-xl cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
 					>
 						Back to Login
 					</button>
@@ -91,42 +70,13 @@ export default function AuthCallbackPage() {
 	}
 
 	return (
-		<div
-			style={{
-				minHeight: "100vh",
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-			}}
-		>
-			<div
-				style={{
-					display: "flex",
-					flexDirection: "column",
-					alignItems: "center",
-					gap: "16px",
-				}}
-			>
-				<div
-					style={{
-						width: "48px",
-						height: "48px",
-						border: "4px solid rgba(255,255,255,0.3)",
-						borderTopColor: "white",
-						borderRadius: "50%",
-						animation: "spin 1s linear infinite",
-					}}
-				/>
-				<p style={{ color: "white", fontSize: "16px" }}>
+		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
+			<div className="flex flex-col items-center gap-4 animate-fade-in">
+				<div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+				<p className="text-white text-base font-medium">
 					Completing sign in...
 				</p>
 			</div>
-			<style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
 		</div>
 	);
 }
