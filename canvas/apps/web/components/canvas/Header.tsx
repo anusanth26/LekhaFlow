@@ -50,92 +50,30 @@ function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 			{isOpen && (
 				<button
 					type="button"
-					style={{
-						position: "fixed",
-						inset: "0",
-						backgroundColor: "rgba(0, 0, 0, 0.4)",
-						backdropFilter: "blur(4px)",
-						zIndex: 40,
-						transition: "opacity 0.3s",
-						border: "none",
-						cursor: "default",
-					}}
+					className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 border-none cursor-default transition-opacity duration-300"
 					onClick={onClose}
 					tabIndex={-1}
 					aria-hidden="true"
 				/>
 			)}
 
-			{/* Menu Card - Right Side Popup */}
+			{/* Menu Card */}
 			<div
-				style={{
-					position: "fixed",
-					top: "200px",
-					right: "16px",
-					width: "280px",
-					backgroundColor: "white",
-					borderRadius: "16px",
-					boxShadow:
-						"0 20px 60px rgba(0,0,0,0.25), 0 8px 24px rgba(0,0,0,0.15)",
-					border: "1px solid #e5e7eb",
-					zIndex: 50,
-					transform: isOpen
-						? "translateY(0) scale(1)"
-						: "translateY(-10px) scale(0.95)",
-					opacity: isOpen ? 1 : 0,
-					pointerEvents: isOpen ? "auto" : "none",
-					transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-					maxHeight: "calc(100vh - 180px)",
-					display: "flex",
-					flexDirection: "column",
-				}}
+				className={`fixed top-20 right-4 w-[300px] glass-card-elevated rounded-2xl z-50 max-h-[calc(100vh-100px)] flex flex-col transition-all duration-200 ease-out ${
+					isOpen
+						? "translate-y-0 scale-100 opacity-100 pointer-events-auto"
+						: "-translate-y-2.5 scale-95 opacity-0 pointer-events-none"
+				}`}
 			>
 				{/* Header */}
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "space-between",
-						padding: "16px",
-						borderBottom: "1px solid #f3f4f6",
-						background: "linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)",
-						borderRadius: "16px 16px 0 0",
-					}}
-				>
-					<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-						<div
-							style={{
-								width: "32px",
-								height: "32px",
-								background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-								borderRadius: "10px",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								boxShadow: "0 4px 12px rgba(139, 92, 246, 0.3)",
-							}}
-						>
-							<Menu size={18} color="white" />
+				<div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-br from-gray-50 to-white rounded-t-2xl">
+					<div className="flex items-center gap-2.5">
+						<div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-violet-600 rounded-[10px] flex items-center justify-center shadow-[0_4px_12px_rgba(139,92,246,0.3)]">
+							<Menu size={18} className="text-white" />
 						</div>
 						<div>
-							<h3
-								style={{
-									fontSize: "14px",
-									fontWeight: 700,
-									color: "#1f2937",
-									margin: 0,
-								}}
-							>
-								Menu
-							</h3>
-							<p
-								style={{
-									fontSize: "11px",
-									color: "#8b5cf6",
-									margin: 0,
-									fontWeight: 500,
-								}}
-							>
+							<h3 className="text-sm font-bold text-gray-800 m-0">Menu</h3>
+							<p className="text-[11px] text-violet-500 m-0 font-medium">
 								Quick Actions
 							</p>
 						</div>
@@ -143,209 +81,62 @@ function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 					<button
 						type="button"
 						onClick={onClose}
-						style={{
-							padding: "6px",
-							borderRadius: "8px",
-							backgroundColor: "transparent",
-							border: "none",
-							cursor: "pointer",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							transition: "background-color 0.15s",
-						}}
-						onMouseEnter={(e) => {
-							e.currentTarget.style.backgroundColor = "#f3f4f6";
-						}}
-						onMouseLeave={(e) => {
-							e.currentTarget.style.backgroundColor = "transparent";
-						}}
+						className="p-1.5 rounded-lg bg-transparent border-none cursor-pointer flex items-center justify-center hover:bg-gray-100 transition-colors"
 					>
-						<X size={18} color="#6b7280" />
+						<X size={18} className="text-gray-500" />
 					</button>
 				</div>
 
-				{/* Menu Items - Scrollable */}
-				<div
-					style={{
-						flex: 1,
-						overflowY: "auto",
-						padding: "12px",
-					}}
-				>
+				{/* Menu Items */}
+				<div className="flex-1 overflow-y-auto p-3">
 					{/* File Section */}
-					<div style={{ marginBottom: "16px" }}>
-						<p
-							style={{
-								padding: "8px 12px",
-								fontSize: "10px",
-								fontWeight: 700,
-								color: "#9ca3af",
-								textTransform: "uppercase",
-								letterSpacing: "0.5px",
-								margin: 0,
-							}}
-						>
+					<div className="mb-4">
+						<p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider m-0">
 							File
 						</p>
-						<div
-							style={{ display: "flex", flexDirection: "column", gap: "4px" }}
-						>
-							<MenuItem
-								icon={<Plus />}
-								label="New Canvas"
-								shortcut="⌘N"
-								color="#8b5cf6"
-							/>
-							<MenuItem
-								icon={<FolderOpen />}
-								label="Open..."
-								shortcut="⌘O"
-								color="#3b82f6"
-							/>
-							<MenuItem
-								icon={<Save />}
-								label="Save"
-								shortcut="⌘S"
-								color="#10b981"
-							/>
+						<div className="flex flex-col gap-1">
+							<MenuItem icon={<Plus />} label="New Canvas" shortcut="Ctrl+N" />
+							<MenuItem icon={<FolderOpen />} label="Open..." shortcut="Ctrl+O" />
+							<MenuItem icon={<Save />} label="Save" shortcut="Ctrl+S" />
 						</div>
 					</div>
 
 					{/* Export Section */}
-					<div style={{ marginBottom: "16px" }}>
-						<p
-							style={{
-								padding: "8px 12px",
-								fontSize: "10px",
-								fontWeight: 700,
-								color: "#9ca3af",
-								textTransform: "uppercase",
-								letterSpacing: "0.5px",
-								margin: 0,
-							}}
-						>
+					<div className="mb-4">
+						<p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider m-0">
 							Export
 						</p>
-						<div
-							style={{ display: "flex", flexDirection: "column", gap: "4px" }}
-						>
-							<MenuItem
-								icon={<Image />}
-								label="Export as PNG"
-								color="#ec4899"
-							/>
-							<MenuItem
-								icon={<FileText />}
-								label="Export as SVG"
-								color="#f59e0b"
-							/>
-							<MenuItem
-								icon={<Download />}
-								label="Export as JSON"
-								color="#06b6d4"
-							/>
+						<div className="flex flex-col gap-1">
+							<MenuItem icon={<Image />} label="Export as PNG" />
+							<MenuItem icon={<FileText />} label="Export as SVG" />
+							<MenuItem icon={<Download />} label="Export as JSON" />
 						</div>
 					</div>
 
 					{/* Canvas Section */}
 					<div>
-						<p
-							style={{
-								padding: "8px 12px",
-								fontSize: "10px",
-								fontWeight: 700,
-								color: "#9ca3af",
-								textTransform: "uppercase",
-								letterSpacing: "0.5px",
-								margin: 0,
-							}}
-						>
+						<p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider m-0">
 							Canvas
 						</p>
-						<div
-							style={{ display: "flex", flexDirection: "column", gap: "4px" }}
-						>
-							<MenuItem
-								icon={<Trash2 />}
-								label="Clear Canvas"
-								variant="danger"
-								color="#ef4444"
-							/>
+						<div className="flex flex-col gap-1">
+							<MenuItem icon={<Trash2 />} label="Clear Canvas" variant="danger" />
 						</div>
 					</div>
 				</div>
 
 				{/* Footer */}
-				<div
-					style={{
-						padding: "12px",
-						borderTop: "1px solid #f3f4f6",
-						backgroundColor: "#fafafa",
-						borderRadius: "0 0 16px 16px",
-					}}
-				>
-					<div style={{ display: "flex", gap: "8px" }}>
+				<div className="p-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+					<div className="flex gap-2">
 						<button
 							type="button"
-							style={{
-								flex: 1,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								gap: "6px",
-								padding: "10px",
-								fontSize: "12px",
-								fontWeight: 600,
-								color: "#4b5563",
-								backgroundColor: "white",
-								border: "1px solid #e5e7eb",
-								borderRadius: "10px",
-								cursor: "pointer",
-								transition: "all 0.15s",
-							}}
-							onMouseEnter={(e) => {
-								e.currentTarget.style.backgroundColor = "#f9fafb";
-								e.currentTarget.style.borderColor = "#3b82f6";
-								e.currentTarget.style.color = "#3b82f6";
-							}}
-							onMouseLeave={(e) => {
-								e.currentTarget.style.backgroundColor = "white";
-								e.currentTarget.style.borderColor = "#e5e7eb";
-								e.currentTarget.style.color = "#4b5563";
-							}}
+							className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-[10px] cursor-pointer transition-all hover:bg-gray-50 hover:border-violet-300 hover:text-violet-500"
 						>
 							<HelpCircle size={16} />
 							Help
 						</button>
 						<button
 							type="button"
-							style={{
-								flex: 1,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								gap: "6px",
-								padding: "10px",
-								fontSize: "12px",
-								fontWeight: 600,
-								color: "#4b5563",
-								backgroundColor: "white",
-								border: "1px solid #e5e7eb",
-								borderRadius: "10px",
-								cursor: "pointer",
-								transition: "all 0.15s",
-							}}
-							onMouseEnter={(e) => {
-								e.currentTarget.style.backgroundColor = "#f9fafb";
-								e.currentTarget.style.borderColor = "#8b5cf6";
-								e.currentTarget.style.color = "#8b5cf6";
-							}}
-							onMouseLeave={(e) => {
-								e.currentTarget.style.backgroundColor = "white";
-								e.currentTarget.style.borderColor = "#e5e7eb";
-								e.currentTarget.style.color = "#4b5563";
-							}}
+							className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-[10px] cursor-pointer transition-all hover:bg-gray-50 hover:border-violet-300 hover:text-violet-500"
 						>
 							<Settings size={16} />
 							Settings
@@ -366,7 +157,6 @@ interface MenuItemProps {
 	label: string;
 	shortcut?: string;
 	onClick?: () => void;
-	color?: string;
 	variant?: "default" | "danger";
 }
 
@@ -375,66 +165,32 @@ function MenuItem({
 	label,
 	shortcut,
 	onClick,
-	color = "#6b7280",
 	variant = "default",
 }: MenuItemProps) {
-	const [isHovered, setIsHovered] = React.useState(false);
-
-	const itemStyle: React.CSSProperties = {
-		width: "100%",
-		display: "flex",
-		alignItems: "center",
-		gap: "10px",
-		padding: "10px 12px",
-		borderRadius: "10px",
-		fontSize: "13px",
-		fontWeight: 600,
-		border: "none",
-		cursor: "pointer",
-		transition: "all 0.15s",
-		backgroundColor: isHovered
-			? variant === "danger"
-				? "#fef2f2"
-				: `${color}15`
-			: "transparent",
-		color: variant === "danger" ? "#ef4444" : isHovered ? color : "#4b5563",
-	};
-
-	const iconStyle: React.CSSProperties = {
-		width: "18px",
-		height: "18px",
-		color: variant === "danger" ? "#ef4444" : color,
-		flexShrink: 0,
-	};
-
-	const shortcutStyle: React.CSSProperties = {
-		padding: "3px 8px",
-		fontSize: "11px",
-		fontFamily: "monospace",
-		color: "#9ca3af",
-		backgroundColor: isHovered ? "#ffffff" : "#f3f4f6",
-		borderRadius: "6px",
-		border: "1px solid #e5e7eb",
-	};
-
 	return (
 		<button
 			type="button"
 			onClick={onClick}
-			style={itemStyle}
-			onMouseEnter={() => setIsHovered(true)}
-			onMouseLeave={() => setIsHovered(false)}
+			className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[13px] font-semibold border-none cursor-pointer transition-all ${
+				variant === "danger"
+					? "bg-transparent text-red-500 hover:bg-red-50"
+					: "bg-transparent text-gray-600 hover:bg-violet-50 hover:text-violet-600"
+			}`}
 		>
-			<span style={iconStyle}>
+			<span
+				className={`flex-shrink-0 ${variant === "danger" ? "text-red-500" : "text-violet-500"}`}
+			>
 				{React.cloneElement(
 					icon as React.ReactElement,
-					{
-						size: 18,
-					} as React.Attributes,
+					{ size: 18 } as React.Attributes,
 				)}
 			</span>
-			<span style={{ flex: 1, textAlign: "left" }}>{label}</span>
-			{shortcut && <kbd style={shortcutStyle}>{shortcut}</kbd>}
+			<span className="flex-1 text-left">{label}</span>
+			{shortcut && (
+				<kbd className="px-2 py-0.5 text-[11px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded-md">
+					{shortcut}
+				</kbd>
+			)}
 		</button>
 	);
 }
@@ -469,93 +225,30 @@ function ShareModal({ isOpen, onClose, roomId }: ShareModalProps) {
 	if (!isOpen) return null;
 
 	return (
-		<div
-			style={{
-				position: "fixed",
-				inset: 0,
-				zIndex: 50,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				padding: "16px",
-			}}
-		>
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 			{/* Backdrop */}
 			<button
 				type="button"
-				style={{
-					position: "absolute",
-					inset: 0,
-					backgroundColor: "rgba(0, 0, 0, 0.5)",
-					backdropFilter: "blur(4px)",
-					border: "none",
-					cursor: "default",
-				}}
+				className="absolute inset-0 bg-black/50 backdrop-blur-sm border-none cursor-default"
 				onClick={onClose}
 				tabIndex={-1}
 				aria-hidden="true"
 			/>
 
 			{/* Modal Card */}
-			<div
-				style={{
-					position: "relative",
-					backgroundColor: "white",
-					borderRadius: "24px",
-					boxShadow: "0 25px 60px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.2)",
-					width: "100%",
-					maxWidth: "540px",
-					overflow: "hidden",
-				}}
-			>
+			<div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-[540px] overflow-hidden animate-scale-in">
 				{/* Gradient Header */}
-				<div
-					style={{
-						background:
-							"linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6366f1 100%)",
-						padding: "24px",
-					}}
-				>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "space-between",
-						}}
-					>
-						<div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-							<div
-								style={{
-									width: "48px",
-									height: "48px",
-									backgroundColor: "rgba(255, 255, 255, 0.2)",
-									borderRadius: "14px",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									backdropFilter: "blur(10px)",
-								}}
-							>
-								<Share2 size={24} color="white" />
+				<div className="bg-gradient-to-br from-violet-500 via-violet-600 to-indigo-600 p-6">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-3.5">
+							<div className="w-12 h-12 bg-white/20 rounded-[14px] flex items-center justify-center backdrop-blur-sm">
+								<Share2 size={24} className="text-white" />
 							</div>
 							<div>
-								<h2
-									style={{
-										fontSize: "20px",
-										fontWeight: 700,
-										color: "white",
-										margin: 0,
-									}}
-								>
+								<h2 className="text-xl font-bold text-white m-0">
 									Share Canvas
 								</h2>
-								<p
-									style={{
-										fontSize: "14px",
-										color: "rgba(255, 255, 255, 0.8)",
-										margin: 0,
-									}}
-								>
+								<p className="text-sm text-white/80 m-0">
 									Collaborate in real-time
 								</p>
 							</div>
@@ -563,110 +256,33 @@ function ShareModal({ isOpen, onClose, roomId }: ShareModalProps) {
 						<button
 							type="button"
 							onClick={onClose}
-							style={{
-								padding: "10px",
-								borderRadius: "12px",
-								backgroundColor: "transparent",
-								border: "none",
-								cursor: "pointer",
-								transition: "background-color 0.15s",
-							}}
-							onMouseEnter={(e) => {
-								e.currentTarget.style.backgroundColor =
-									"rgba(255, 255, 255, 0.1)";
-							}}
-							onMouseLeave={(e) => {
-								e.currentTarget.style.backgroundColor = "transparent";
-							}}
+							className="p-2.5 rounded-xl bg-transparent border-none cursor-pointer hover:bg-white/10 transition-colors"
 						>
-							<X size={20} color="white" />
+							<X size={20} className="text-white" />
 						</button>
 					</div>
 				</div>
 
 				{/* Content */}
-				<div
-					style={{
-						padding: "24px",
-						display: "flex",
-						flexDirection: "column",
-						gap: "20px",
-					}}
-				>
-					{/* Share Link Section */}
+				<div className="p-6 flex flex-col gap-5">
+					{/* Share Link */}
 					<div>
-						<p
-							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: "8px",
-								fontSize: "13px",
-								fontWeight: 700,
-								color: "#374151",
-								marginBottom: "12px",
-							}}
-						>
-							<Link2 size={16} color="#8b5cf6" />
+						<p className="flex items-center gap-2 text-[13px] font-bold text-gray-700 mb-3">
+							<Link2 size={16} className="text-violet-500" />
 							Shareable Link
 						</p>
-						<div style={{ display: "flex", gap: "10px" }}>
-							<div
-								style={{
-									flex: 1,
-									backgroundColor: "#f9fafb",
-									border: "1px solid #e5e7eb",
-									borderRadius: "12px",
-									padding: "14px 16px",
-									fontSize: "13px",
-									color: "#6b7280",
-									fontFamily: "monospace",
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									whiteSpace: "nowrap",
-								}}
-							>
+						<div className="flex gap-2.5">
+							<div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-[13px] text-gray-500 font-mono truncate">
 								{shareUrl}
 							</div>
 							<button
 								type="button"
 								onClick={handleCopy}
-								style={{
-									padding: "14px 24px",
-									borderRadius: "12px",
-									fontWeight: 700,
-									border: "none",
-									cursor: "pointer",
-									display: "flex",
-									alignItems: "center",
-									gap: "8px",
-									transition: "all 0.2s",
-									fontSize: "14px",
-									...(copied
-										? {
-												backgroundColor: "#10b981",
-												color: "white",
-												boxShadow: "0 8px 24px rgba(16, 185, 129, 0.3)",
-											}
-										: {
-												background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-												color: "white",
-												boxShadow: "0 8px 24px rgba(139, 92, 246, 0.35)",
-											}),
-								}}
-								onMouseEnter={(e) => {
-									if (!copied) {
-										e.currentTarget.style.transform = "translateY(-1px)";
-										e.currentTarget.style.boxShadow =
-											"0 12px 32px rgba(139, 92, 246, 0.45)";
-									}
-								}}
-								onMouseLeave={(e) => {
-									if (!copied) {
-										e.currentTarget.style.transform = "translateY(0)";
-										e.currentTarget.style.boxShadow =
-											"0 8px 24px rgba(139, 92, 246, 0.35)";
-									}
-								}}
+								className={`px-6 py-3.5 rounded-xl font-bold border-none cursor-pointer flex items-center gap-2 transition-all text-sm text-white ${
+									copied
+										? "bg-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.3)]"
+										: "bg-gradient-to-r from-violet-500 to-violet-600 shadow-[0_8px_24px_rgba(139,92,246,0.35)] hover:-translate-y-px hover:shadow-[0_12px_32px_rgba(139,92,246,0.45)]"
+								}`}
 							>
 								{copied ? (
 									<>
@@ -684,102 +300,30 @@ function ShareModal({ isOpen, onClose, roomId }: ShareModalProps) {
 					</div>
 
 					{/* Room Info Card */}
-					<div
-						style={{
-							background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
-							border: "1px solid #e9d5ff",
-							borderRadius: "16px",
-							padding: "20px",
-						}}
-					>
-						<div
-							style={{
-								display: "flex",
-								alignItems: "start",
-								justifyContent: "space-between",
-							}}
-						>
+					<div className="bg-gradient-to-br from-violet-50 to-purple-100 border border-purple-200 rounded-2xl p-5">
+						<div className="flex items-start justify-between">
 							<div>
-								<p
-									style={{
-										fontSize: "11px",
-										fontWeight: 700,
-										color: "#8b5cf6",
-										textTransform: "uppercase",
-										letterSpacing: "0.5px",
-										marginBottom: "6px",
-									}}
-								>
+								<p className="text-[11px] font-bold text-violet-500 uppercase tracking-wider mb-1.5">
 									Room ID
 								</p>
-								<p
-									style={{
-										fontSize: "18px",
-										fontWeight: 700,
-										color: "#581c87",
-										fontFamily: "monospace",
-									}}
-								>
+								<p className="text-lg font-bold text-purple-900 font-mono">
 									{roomId}
 								</p>
 							</div>
-							<div
-								style={{
-									width: "48px",
-									height: "48px",
-									backgroundColor: "white",
-									borderRadius: "12px",
-									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-								}}
-							>
-								<QrCode size={24} color="#a78bfa" />
+							<div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+								<QrCode size={24} className="text-violet-400" />
 							</div>
 						</div>
-						<p
-							style={{
-								fontSize: "13px",
-								color: "#7c3aed",
-								marginTop: "12px",
-								lineHeight: "1.5",
-							}}
-						>
+						<p className="text-[13px] text-violet-600 mt-3 leading-relaxed">
 							Anyone with this link can view and edit in real-time
 						</p>
 					</div>
 
 					{/* Quick Share Options */}
-					<div style={{ display: "flex", gap: "12px" }}>
+					<div className="flex gap-3">
 						<button
 							type="button"
-							style={{
-								flex: 1,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								gap: "8px",
-								padding: "14px",
-								backgroundColor: "#f9fafb",
-								border: "1px solid #e5e7eb",
-								borderRadius: "12px",
-								cursor: "pointer",
-								fontSize: "13px",
-								fontWeight: 600,
-								color: "#4b5563",
-								transition: "all 0.15s",
-							}}
-							onMouseEnter={(e) => {
-								e.currentTarget.style.backgroundColor = "#f3f4f6";
-								e.currentTarget.style.borderColor = "#3b82f6";
-								e.currentTarget.style.color = "#3b82f6";
-							}}
-							onMouseLeave={(e) => {
-								e.currentTarget.style.backgroundColor = "#f9fafb";
-								e.currentTarget.style.borderColor = "#e5e7eb";
-								e.currentTarget.style.color = "#4b5563";
-							}}
+							className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer text-[13px] font-semibold text-gray-600 transition-all hover:bg-gray-100 hover:border-violet-300 hover:text-violet-500"
 						>
 							<Mail size={16} />
 							Email
@@ -787,32 +331,7 @@ function ShareModal({ isOpen, onClose, roomId }: ShareModalProps) {
 						<button
 							type="button"
 							onClick={handleCopy}
-							style={{
-								flex: 1,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								gap: "8px",
-								padding: "14px",
-								backgroundColor: "#f9fafb",
-								border: "1px solid #e5e7eb",
-								borderRadius: "12px",
-								cursor: "pointer",
-								fontSize: "13px",
-								fontWeight: 600,
-								color: "#4b5563",
-								transition: "all 0.15s",
-							}}
-							onMouseEnter={(e) => {
-								e.currentTarget.style.backgroundColor = "#f3f4f6";
-								e.currentTarget.style.borderColor = "#8b5cf6";
-								e.currentTarget.style.color = "#8b5cf6";
-							}}
-							onMouseLeave={(e) => {
-								e.currentTarget.style.backgroundColor = "#f9fafb";
-								e.currentTarget.style.borderColor = "#e5e7eb";
-								e.currentTarget.style.color = "#4b5563";
-							}}
+							className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer text-[13px] font-semibold text-gray-600 transition-all hover:bg-gray-100 hover:border-violet-300 hover:text-violet-500"
 						>
 							<Link2 size={16} />
 							Copy Link
@@ -843,100 +362,30 @@ export function HeaderLeft() {
 	return (
 		<>
 			{/* Document Title - Left Side */}
-			<div
-				style={{
-					position: "absolute",
-					top: "16px",
-					left: "80px",
-					zIndex: 50,
-					display: "flex",
-					alignItems: "center",
-					gap: "12px",
-				}}
-			>
-				{/* Document Title Pill */}
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "12px",
-						padding: "10px 20px",
-						borderRadius: "14px",
-						backgroundColor: "white",
-						boxShadow:
-							"0 10px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
-						border: "1px solid #e5e7eb",
-					}}
-				>
+			<div className="absolute top-4 left-20 z-50 flex items-center gap-3">
+				<div className="glass-card-elevated rounded-[14px] flex items-center gap-3 px-5 py-2.5">
 					{/* Color indicator */}
-					<div
-						style={{
-							width: "10px",
-							height: "10px",
-							borderRadius: "50%",
-							background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
-							boxShadow: "0 2px 8px rgba(139, 92, 246, 0.4)",
-						}}
-					/>
-
+					<div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 shadow-[0_2px_8px_rgba(139,92,246,0.4)]" />
 					<input
 						type="text"
 						value={docName}
 						onChange={(e) => setDocName(e.target.value)}
-						style={{
-							fontSize: "14px",
-							fontWeight: 600,
-							color: "#1f2937",
-							backgroundColor: "transparent",
-							border: "none",
-							outline: "none",
-							minWidth: "140px",
-							maxWidth: "220px",
-						}}
+						className="text-sm font-semibold text-gray-800 bg-transparent border-none outline-none min-w-[140px] max-w-[220px]"
 						placeholder="Untitled"
 					/>
 				</div>
 			</div>
 
-			{/* Hamburger Menu Button - Right Side Below Style Button */}
-			<div
-				style={{
-					position: "absolute",
-					top: "120px",
-					right: "16px",
-					zIndex: 50,
-				}}
-			>
+			{/* Hamburger Menu Button */}
+			<div className="absolute top-[120px] right-4 z-50">
 				<button
 					type="button"
 					onClick={() => setMenuOpen(true)}
 					title="Menu"
-					style={{
-						padding: "12px",
-						borderRadius: "14px",
-						backgroundColor: "white",
-						boxShadow:
-							"0 10px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
-						border: "1px solid #e5e7eb",
-						cursor: "pointer",
-						display: "flex",
-						alignItems: "center",
-						gap: "8px",
-						transition: "all 0.15s ease",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.backgroundColor = "#f8fafc";
-						e.currentTarget.style.borderColor = "#8b5cf6";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.backgroundColor = "white";
-						e.currentTarget.style.borderColor = "#e5e7eb";
-					}}
+					className="glass-card-elevated rounded-[14px] px-3 py-3 cursor-pointer flex items-center gap-2 border-none transition-all hover:bg-gray-50 hover:border-violet-300"
 				>
-					<Menu size={20} color="#8b5cf6" />
-					<span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>
-						Menu
-					</span>
+					<Menu size={20} className="text-violet-500" />
+					<span className="text-[13px] font-semibold text-gray-700">Menu</span>
 				</button>
 			</div>
 
@@ -966,110 +415,52 @@ export function HeaderRight() {
 
 	return (
 		<>
-			<div
-				style={{
-					position: "absolute",
-					top: "16px",
-					right: "16px",
-					zIndex: 50,
-					display: "flex",
-					alignItems: "center",
-					gap: "12px",
-				}}
-			>
+			<div className="absolute top-4 right-4 z-50 flex items-center gap-3">
 				{/* Connection Status */}
 				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "8px",
-						padding: "10px 16px",
-						borderRadius: "999px",
-						backgroundColor: isConnected ? "#ecfdf5" : "#fef2f2",
-						border: `1px solid ${isConnected ? "#a7f3d0" : "#fecaca"}`,
-						boxShadow: `0 4px 12px ${isConnected ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)"}`,
-					}}
+					className={`flex items-center gap-2 px-4 py-2.5 rounded-full border ${
+						isConnected
+							? "bg-emerald-50 border-emerald-200 shadow-[0_4px_12px_rgba(16,185,129,0.15)]"
+							: "bg-red-50 border-red-200 shadow-[0_4px_12px_rgba(239,68,68,0.15)]"
+					}`}
 				>
 					<div
-						style={{
-							width: "8px",
-							height: "8px",
-							borderRadius: "50%",
-							backgroundColor: isConnected ? "#10b981" : "#ef4444",
-							animation: isConnected ? "pulse 2s infinite" : "none",
-						}}
+						className={`w-2 h-2 rounded-full ${
+							isConnected
+								? "bg-emerald-500 animate-pulse-dot"
+								: "bg-red-500"
+						}`}
 					/>
 					<span
-						style={{
-							fontSize: "12px",
-							fontWeight: 700,
-							color: isConnected ? "#047857" : "#b91c1c",
-							textTransform: "uppercase",
-							letterSpacing: "0.5px",
-						}}
+						className={`text-xs font-bold uppercase tracking-wider ${
+							isConnected ? "text-emerald-700" : "text-red-700"
+						}`}
 					>
 						{isConnected ? "Live" : "Offline"}
 					</span>
 				</div>
 
 				{/* Collaborators */}
-				<div style={{ display: "flex", alignItems: "center" }}>
+				<div className="flex items-center">
 					{/* Avatar Stack */}
-					<div style={{ display: "flex" }}>
+					<div className="flex">
 						{/* My Avatar */}
 						<div
-							style={{
-								position: "relative",
-								width: "40px",
-								height: "40px",
-								borderRadius: "50%",
-								backgroundColor: myColor,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								fontSize: "12px",
-								fontWeight: 700,
-								color: "white",
-								boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-								border: "3px solid white",
-								zIndex: 10,
-							}}
+							className="relative w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md border-[3px] border-white z-10"
+							style={{ backgroundColor: myColor }}
 							title={`You (${myName})`}
 						>
 							{getInitials(myName)}
-							{/* Online indicator */}
-							<div
-								style={{
-									position: "absolute",
-									bottom: "-2px",
-									right: "-2px",
-									width: "14px",
-									height: "14px",
-									backgroundColor: "#10b981",
-									borderRadius: "50%",
-									border: "2px solid white",
-								}}
-							/>
+							<div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
 						</div>
 
 						{/* Other Collaborators */}
 						{collaborators.slice(0, 4).map((collab, index) => (
 							<div
 								key={collab.id}
+								className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md border-[3px] border-white -ml-3"
 								style={{
-									width: "40px",
-									height: "40px",
-									borderRadius: "50%",
 									backgroundColor: collab.color,
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									fontSize: "12px",
-									fontWeight: 700,
-									color: "white",
-									boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-									border: "3px solid white",
-									marginLeft: "-12px",
 									zIndex: 10 - index - 1,
 								}}
 								title={collab.name}
@@ -1080,23 +471,7 @@ export function HeaderRight() {
 
 						{/* Overflow Badge */}
 						{collaborators.length > 4 && (
-							<div
-								style={{
-									width: "40px",
-									height: "40px",
-									borderRadius: "50%",
-									backgroundColor: "#f1f5f9",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									fontSize: "12px",
-									fontWeight: 700,
-									color: "#64748b",
-									boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-									border: "3px solid white",
-									marginLeft: "-12px",
-								}}
-							>
+							<div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shadow-md border-[3px] border-white -ml-3">
 								+{collaborators.length - 4}
 							</div>
 						)}
@@ -1104,23 +479,9 @@ export function HeaderRight() {
 
 					{/* User Count Badge */}
 					{collaborators.length > 0 && (
-						<div
-							style={{
-								marginLeft: "12px",
-								display: "flex",
-								alignItems: "center",
-								gap: "6px",
-								padding: "8px 12px",
-								borderRadius: "999px",
-								backgroundColor: "white",
-								boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-								border: "1px solid #e5e7eb",
-							}}
-						>
-							<Users size={14} color="#8b5cf6" />
-							<span
-								style={{ fontSize: "12px", fontWeight: 700, color: "#374151" }}
-							>
+						<div className="ml-3 flex items-center gap-1.5 px-3 py-2 rounded-full bg-white shadow-md border border-gray-200">
+							<Users size={14} className="text-violet-500" />
+							<span className="text-xs font-bold text-gray-700">
 								{collaborators.length + 1}
 							</span>
 						</div>
@@ -1131,31 +492,7 @@ export function HeaderRight() {
 				<button
 					type="button"
 					onClick={() => setShareModalOpen(true)}
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "8px",
-						padding: "12px 24px",
-						borderRadius: "14px",
-						background: "linear-gradient(135deg, #8b5cf6, #7c3aed, #6366f1)",
-						border: "none",
-						cursor: "pointer",
-						fontSize: "14px",
-						fontWeight: 700,
-						color: "white",
-						boxShadow: "0 8px 24px rgba(139, 92, 246, 0.35)",
-						transition: "all 0.2s ease",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.transform = "translateY(-1px)";
-						e.currentTarget.style.boxShadow =
-							"0 12px 32px rgba(139, 92, 246, 0.45)";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.transform = "translateY(0)";
-						e.currentTarget.style.boxShadow =
-							"0 8px 24px rgba(139, 92, 246, 0.35)";
-					}}
+					className="flex items-center gap-2 px-6 py-3 rounded-[14px] bg-gradient-to-r from-violet-500 via-violet-600 to-indigo-600 border-none cursor-pointer text-sm font-bold text-white shadow-[0_8px_24px_rgba(139,92,246,0.35)] transition-all hover:-translate-y-px hover:shadow-[0_12px_32px_rgba(139,92,246,0.45)]"
 				>
 					<Share2 size={16} />
 					Share
