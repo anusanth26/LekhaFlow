@@ -28,15 +28,8 @@ function CollaboratorCursor({ collaborator }: CollaboratorCursorProps) {
 
 	return (
 		<div
-			style={{
-				position: "absolute",
-				left: 0,
-				top: 0,
-				transform: `translate(${cursor.x}px, ${cursor.y}px)`,
-				pointerEvents: "none",
-				zIndex: 999,
-				transition: "transform 50ms linear",
-			}}
+			className="absolute left-0 top-0 pointer-events-none z-[999] transition-transform duration-100 ease-linear"
+			style={{ transform: `translate(${cursor.x}px, ${cursor.y}px)` }}
 		>
 			{/* Cursor Arrow */}
 			<svg
@@ -44,7 +37,7 @@ function CollaboratorCursor({ collaborator }: CollaboratorCursorProps) {
 				height="24"
 				viewBox="0 0 24 24"
 				fill="none"
-				style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))" }}
+				className="drop-shadow-md"
 				aria-labelledby={`cursor-${collaborator.id}`}
 			>
 				<title id={`cursor-${collaborator.id}`}>{name}&apos;s cursor</title>
@@ -58,22 +51,8 @@ function CollaboratorCursor({ collaborator }: CollaboratorCursorProps) {
 
 			{/* Name Label */}
 			<div
-				style={{
-					position: "absolute",
-					left: "18px",
-					top: "18px",
-					padding: "4px 10px",
-					borderRadius: "12px",
-					fontSize: "12px",
-					fontWeight: 600,
-					color: "white",
-					backgroundColor: color,
-					boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-					whiteSpace: "nowrap",
-					maxWidth: "120px",
-					overflow: "hidden",
-					textOverflow: "ellipsis",
-				}}
+				className="absolute left-[18px] top-[18px] px-2.5 py-1 rounded-full text-xs font-semibold text-white shadow-md whitespace-nowrap max-w-[120px] overflow-hidden text-ellipsis"
+				style={{ backgroundColor: color }}
 			>
 				{name}
 			</div>
@@ -89,15 +68,7 @@ export function CollaboratorCursors({
 	collaborators,
 }: CollaboratorCursorsProps) {
 	return (
-		<div
-			style={{
-				position: "absolute",
-				inset: 0,
-				pointerEvents: "none",
-				overflow: "hidden",
-				zIndex: 100,
-			}}
-		>
+		<div className="absolute inset-0 pointer-events-none overflow-hidden z-[100]">
 			{collaborators.map((collaborator) => (
 				<CollaboratorCursor key={collaborator.id} collaborator={collaborator} />
 			))}
