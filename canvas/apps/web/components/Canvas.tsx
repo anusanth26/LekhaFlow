@@ -91,7 +91,7 @@ import { ZoomControls } from "./canvas/ZoomControls";
 
 interface CanvasProps {
 	roomId: string;
-	token: string | null;
+	token?: string | null;
 }
 
 // ============================================================================
@@ -260,7 +260,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		updateSelection,
 		undo,
 		redo,
-	} = useYjsSync(roomId, token);
+	} = useYjsSync(roomId, token ?? null);
 
 	// ─────────────────────────────────────────────────────────────────
 	// STORE - Local state synced with Yjs

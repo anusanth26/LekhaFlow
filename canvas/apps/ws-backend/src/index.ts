@@ -1,36 +1,14 @@
-/**
- * ============================================================================
- * LEKHAFLOW WS BACKEND - HOCUSPOCUS SERVER
- * ============================================================================
- *
- * Real-time collaboration server using Hocuspocus (Yjs framework).
- * Handles document sync, persistence, and authentication.
- */
-
-// Load environment variables FIRST (before any imports that access process.env)
 import "./env.js";
 
 import { Database } from "@hocuspocus/extension-database";
 import { Logger } from "@hocuspocus/extension-logger";
 import { Server } from "@hocuspocus/server";
-import { env } from "@repo/config";
-import { createClient } from "@supabase/supabase-js";
+import { serverEnv } from "@repo/config";
+import { createServiceClient } from "./supabase.server.js";
 
-// ============================================================================
-// SUPABASE ADMIN CLIENT
-// ============================================================================
+const supabase = createServiceClient();
 
-/**
- * Admin client using service key to bypass RLS.
- * Required for server-side persistence on behalf of authenticated users.
- */
-const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
-
-// ============================================================================
-// SERVER CONFIGURATION
-// ============================================================================
-
-const PORT = parseInt(process.env.PORT || process.env.WS_PORT || "8080", 10);
+const PORT = parseInt(serverEnv.WS_PORT, 10);
 
 const server = Server.configure({
 	port: PORT,
@@ -38,10 +16,6 @@ const server = Server.configure({
 	extensions: [
 		new Logger(),
 		new Database({
-			/**
-			 * Load document from Supabase
-			 * Called when a client connects to a document
-			 */
 			fetch: async ({ documentName }) => {
 				const { data, error } = await supabase
 					.from("canvases")
@@ -57,10 +31,6 @@ const server = Server.configure({
 				return data?.data ?? null;
 			},
 
-			/**
-			 * Save document to Supabase
-			 * Called periodically and when all clients disconnect
-			 */
 			store: async ({ documentName, state }) => {
 				const { error } = await supabase
 					.from("canvases")
@@ -77,10 +47,6 @@ const server = Server.configure({
 		}),
 	],
 
-	/**
-	 * Authentication hook
-	 * Validates JWT token from client connection
-	 */
 	async onAuthenticate(data) {
 		const { token } = data;
 
@@ -97,7 +63,6 @@ const server = Server.configure({
 			throw new Error("Unauthorized: Invalid token");
 		}
 
-		// Return user info to attach to the connection context
 		return {
 			user: {
 				id: user.id,
@@ -107,10 +72,6 @@ const server = Server.configure({
 	},
 });
 
-// ============================================================================
-// SERVER STARTUP
-// ============================================================================
-
 server.listen().then(() => {
-	console.log(`🚀 Hocuspocus server running on port ${PORT}`);
+	console.log(`Hocuspocus server running on port ${PORT}`);
 });
