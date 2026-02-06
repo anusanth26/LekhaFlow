@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { use, useEffect, useState } from "react";
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "../../../lib/supabase.client";
 
 const Canvas = dynamic(
 	() => import("../../../components/Canvas").then((mod) => mod.Canvas),

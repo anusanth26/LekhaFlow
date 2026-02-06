@@ -1,7 +1,7 @@
 import { Trash2, File, Grid, List } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase.client";
 import { Button } from "./ui/Button";
 
 interface Canvas {

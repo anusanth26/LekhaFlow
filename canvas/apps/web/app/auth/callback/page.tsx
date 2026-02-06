@@ -1,17 +1,23 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { supabase } from "../../../lib/supabase";
+import { Suspense, useEffect, useState } from "react";
+import { supabase } from "../../../lib/supabase.client";
 
-/**
- * Auth Callback Page
- *
- * Handles the OAuth redirect. Supabase returns tokens in the URL hash,
- * which must be processed client-side. This page detects the session
- * and redirects to the intended destination.
- */
-export default function AuthCallbackPage() {
+function Loading() {
+	return (
+		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
+			<div className="flex flex-col items-center gap-4 animate-fade-in">
+				<div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+				<p className="text-white text-base font-medium">
+					Completing sign in...
+				</p>
+			</div>
+		</div>
+	);
+}
+
+function AuthCallbackContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [error, setError] = useState<string | null>(null);
@@ -69,14 +75,13 @@ export default function AuthCallbackPage() {
 		);
 	}
 
+	return <Loading />;
+}
+
+export default function AuthCallbackPage() {
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
-			<div className="flex flex-col items-center gap-4 animate-fade-in">
-				<div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-				<p className="text-white text-base font-medium">
-					Completing sign in...
-				</p>
-			</div>
-		</div>
+		<Suspense fallback={<Loading />}>
+			<AuthCallbackContent />
+		</Suspense>
 	);
 }

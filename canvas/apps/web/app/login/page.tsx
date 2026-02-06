@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import Antigravity from "../../components/Antigravity";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase.client";
 
 export default function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
