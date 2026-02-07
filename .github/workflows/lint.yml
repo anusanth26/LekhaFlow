@@ -2,9 +2,9 @@ name: Lint & Build
 
 on:
   pull_request:
-    branches: [ main, dev,DEV]
+    branches: [ main, dev, DEV ]
   push:
-    branches: [ main, dev,DEV]
+    branches: [ main, dev, DEV ]
 
 jobs:
   lint:
@@ -28,5 +28,11 @@ jobs:
           cache-dependency-path: canvas/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
+
       - run: pnpm biome check .
-      - run: pnpm build
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
