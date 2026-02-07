@@ -1,407 +1,1075 @@
+/**
+ * ============================================================================
+ * LEKHAFLOW - MAIN CANVAS COMPONENT
+ * ============================================================================
+ *
+ * LINE-BY-LINE EXPLANATION OF THE SYNC ENGINE INTEGRATION:
+ *
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                    CANVAS COMPONENT ARCHITECTURE                        │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │                                                                         │
+ * │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
+ * │  │   Canvas    │    │  useYjsSync │    │ Zustand     │                 │
+ * │  │ Component   │◄───│    Hook     │◄───│   Store     │                 │
+ * │  └─────────────┘    └─────────────┘    └─────────────┘                 │
+ * │         │                  │                  │                        │
+ * │         │ Mouse Events     │ Yjs Updates      │ State                  │
+ * │         ▼                  ▼                  ▼                        │
+ * │  ┌─────────────────────────────────────────────────────┐              │
+ * │  │                 React Konva Stage                   │              │
+ * │  │  - Renders all elements from store                  │              │
+ * │  │  - Handles mouse/touch interactions                 │              │
+ * │  │  - Supports zoom and pan                            │              │
+ * │  └─────────────────────────────────────────────────────┘              │
+ * │                                                                         │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ *
+ * DATA FLOW (When User Draws):
+ *
+ * 1. User clicks and drags on canvas
+ * 2. Mouse events trigger element creation/update
+ * 3. useYjsSync.addElement() updates Yjs document
+ * 4. Yjs broadcasts update to server
+ * 5. Server broadcasts to other clients
+ * 6. All clients' Yjs observers fire
+ * 7. Zustand store updates with new elements
+ * 8. React re-renders the canvas
+ *
+ * This ensures REAL-TIME COLLABORATION:
+ * - All users see the same canvas state
+ * - No manual refresh needed
+ * - Conflicts are auto-resolved by CRDT
+ */
+
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Stage, Layer, Rect, Circle, Text, Group, Path } from "react-konva";
-import { Pointer, Square } from "lucide-react";
-import * as Y from "yjs";
-import { WebsocketProvider } from "y-websocket";
-import { v4 as uuidv4 } from "uuid";
+import type {
+	ArrowElement,
+	CanvasElement,
+	FreedrawElement,
+	LineElement,
+	Point,
+	TextElement,
+	Tool,
+} from "@repo/common";
+import type Konva from "konva";
+import type { KonvaEventObject } from "konva/lib/Node";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-// Simple random name generator
-const NAMES = ["Unicorn", "Tiger", "Eagle", "Panda", "Fox", "Koala", "Badger", "Lion"];
-const COLORS = ["#FF5733", "#33FF57", "#3357FF", "#F033FF", "#33FFF5", "#FFFF33"];
+import { Ellipse, Layer, Line, Rect, Stage, Text } from "react-konva";
 
-const getRandomName = () => NAMES[Math.floor(Math.random() * NAMES.length)] || "Anonymous";
-const getRandomColor = () => COLORS[Math.floor(Math.random() * COLORS.length)] || "#FF0000";
+import { useYjsSync } from "../hooks/useYjsSync";
+import {
+	createArrow,
+	createEllipse,
+	createFreedraw,
+	createLine,
+	createRectangle,
+	createText,
+	getElementAtPoint,
+} from "../lib/element-utils";
+import {
+	useCanvasStore,
+	useCollaboratorsArray,
+	useElementsArray,
+} from "../store/canvas-store";
+import { CollaboratorCursors } from "./canvas/CollaboratorCursors";
+import { ConnectionStatus } from "./canvas/ConnectionStatus";
+import { ContextMenu } from "./canvas/ContextMenu";
+import { ExportModal } from "./canvas/ExportModal";
+import { HeaderLeft, HeaderRight } from "./canvas/Header";
+import { HelpPanel } from "./canvas/HelpPanel";
+import { PropertiesPanel } from "./canvas/PropertiesPanel";
+// Import components directly to avoid circular dependencies through barrel exports
+import { Toolbar } from "./canvas/Toolbar";
+import { ZoomControls } from "./canvas/ZoomControls";
 
-interface Shape {
-    id: string;
-    type: 'rect' | 'circle';
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    fill: string;
-    stroke?: string;
-    strokeWidth?: number;
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface CanvasProps {
+	roomId: string;
+	token?: string | null;
 }
 
-interface UserAwareness {
-    id: number;
-    point: [number, number];
-    color: string;
-    name: string;
+// ============================================================================
+// HELPER: RENDER ELEMENT
+// ============================================================================
+
+/**
+ * Render a single element based on its type
+ *
+ * @param element - The element to render
+ * @param isSelected - Whether the element is selected
+ * @param onDragEnd - Callback when drag ends
+ */
+function renderElement(
+	element: CanvasElement,
+	_isSelected: boolean,
+	isDraggable: boolean,
+	onDragEnd: (id: string, x: number, y: number) => void,
+) {
+	const commonProps = {
+		id: element.id,
+		x: element.x,
+		y: element.y,
+		opacity: element.opacity / 100,
+		rotation: element.angle,
+		draggable: isDraggable,
+		onDragEnd: (e: KonvaEventObject<DragEvent>) => {
+			onDragEnd(element.id, e.target.x(), e.target.y());
+		},
+	};
+
+	const strokeProps = {
+		stroke: element.strokeColor,
+		strokeWidth: element.strokeWidth,
+		dash:
+			element.strokeStyle === "dashed"
+				? [10, 5]
+				: element.strokeStyle === "dotted"
+					? [2, 2]
+					: undefined,
+	};
+
+	switch (element.type) {
+		case "rectangle":
+			return (
+				<Rect
+					key={element.id}
+					{...commonProps}
+					{...strokeProps}
+					width={element.width}
+					height={element.height}
+					fill={
+						element.backgroundColor === "transparent"
+							? undefined
+							: element.backgroundColor
+					}
+					cornerRadius={element.roundness?.value ?? 0}
+				/>
+			);
+
+		case "ellipse":
+			return (
+				<Ellipse
+					key={element.id}
+					{...commonProps}
+					{...strokeProps}
+					radiusX={Math.abs(element.width) / 2}
+					radiusY={Math.abs(element.height) / 2}
+					offsetX={-element.width / 2}
+					offsetY={-element.height / 2}
+					fill={
+						element.backgroundColor === "transparent"
+							? undefined
+							: element.backgroundColor
+					}
+				/>
+			);
+
+		case "line":
+		case "arrow": {
+			const lineElement = element as LineElement | ArrowElement;
+			const points = lineElement.points.flatMap((p) => [p.x, p.y]);
+			return (
+				<Line
+					key={element.id}
+					{...commonProps}
+					{...strokeProps}
+					points={points}
+					tension={0}
+					lineCap="round"
+					lineJoin="round"
+					// Arrow heads for arrow type
+					{...(element.type === "arrow" && {
+						pointerLength: 10,
+						pointerWidth: 10,
+					})}
+				/>
+			);
+		}
+
+		case "freedraw": {
+			const freedrawElement = element as FreedrawElement;
+			const points = freedrawElement.points.flatMap((p) => [p[0], p[1]]);
+			return (
+				<Line
+					key={element.id}
+					{...commonProps}
+					{...strokeProps}
+					points={points}
+					tension={0.5}
+					lineCap="round"
+					lineJoin="round"
+				/>
+			);
+		}
+
+		case "text": {
+			const textElement = element as TextElement;
+			return (
+				<Text
+					key={element.id}
+					{...commonProps}
+					text={textElement.text}
+					fontSize={textElement.fontSize}
+					fontFamily="Arial"
+					fill={element.strokeColor}
+					width={element.width || undefined}
+					align={textElement.textAlign}
+				/>
+			);
+		}
+
+		default:
+			return null;
+	}
 }
 
-export function Canvas({ roomId }: { roomId: string }) {
-    const [shapes, setShapes] = useState<Record<string, Shape>>({});
-    const [cursors, setCursors] = useState<UserAwareness[]>([]);
+// ============================================================================
+// MAIN CANVAS COMPONENT
+// ============================================================================
 
-    // Memoize the doc so it doesn't recreate on every render
-    const doc = useMemo(() => new Y.Doc(), []);
-    const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+export function Canvas({ roomId, token }: CanvasProps) {
+	// ─────────────────────────────────────────────────────────────────
+	// REFS
+	// ─────────────────────────────────────────────────────────────────
 
-    // Generate my identity constant for this session
-    const myIdentity = useMemo(() => ({
-        name: getRandomName(),
-        color: getRandomColor()
-    }), []);
+	const stageRef = useRef<Konva.Stage>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const wsProvider = new WebsocketProvider(
-            "ws://localhost:8080",
-            roomId,
-            doc
-        );
-        setProvider(wsProvider);
+	// ─────────────────────────────────────────────────────────────────
+	// SYNC HOOK - The heart of collaboration!
+	// ─────────────────────────────────────────────────────────────────
 
-        // --- PART 1: SHARED SHAPES ---
-        const yShapes: Y.Map<Shape> = doc.getMap("shapes");
-        yShapes.observe(() => {
-            setShapes(yShapes.toJSON() as Record<string, Shape>);
-        });
-        setShapes(yShapes.toJSON() as Record<string, Shape>);
+	/**
+	 * useYjsSync connects to the WebSocket server and handles:
+	 * - Document synchronization
+	 * - Element CRUD operations
+	 * - Awareness (cursors/presence)
+	 * - Undo/Redo
+	 */
+	const {
+		addElement,
+		updateElement,
+		deleteElements,
+		updateCursor,
+		updateSelection,
+		undo,
+		redo,
+	} = useYjsSync(roomId, token ?? null);
 
-        // --- PART 2: AWARENESS ---
-        const awareness = wsProvider.awareness;
+	// ─────────────────────────────────────────────────────────────────
+	// STORE - Local state synced with Yjs
+	// ─────────────────────────────────────────────────────────────────
 
-        // Set my initial state immediately (optimistic)
-        awareness.setLocalState({
-            point: [0, 0],
-            color: myIdentity.color,
-            name: myIdentity.name
-        });
+	const {
+		activeTool,
+		setActiveTool,
+		selectedElementIds,
+		setSelectedElementIds,
+		clearSelection,
+		currentStrokeColor,
+		currentBackgroundColor,
+		currentStrokeWidth,
+		currentStrokeStyle,
+		currentOpacity,
+		zoom,
+		scrollX,
+		scrollY,
+		setScroll,
+		isDrawing,
+		setIsDrawing,
+		isDragging,
+		setIsDragging,
+		interactionStartPoint,
+		setInteractionStartPoint,
+		isConnected,
+		isSynced,
+	} = useCanvasStore();
 
-        // "States" update handler
-        const handleAwarenessChange = () => {
-            const states = awareness.getStates();
-            const activeCursors: UserAwareness[] = [];
+	// Elements and collaborators from store
+	const elements = useElementsArray();
+	const collaborators = useCollaboratorsArray();
 
-            states.forEach((state: any, clientId: number) => {
-                if (clientId !== doc.clientID && state.point) {
-                    activeCursors.push({
-                        id: clientId,
-                        point: state.point,
-                        color: state.color || 'gray',
-                        name: state.name || `User ${clientId}`
-                    });
-                }
-            });
-            setCursors(activeCursors);
-        };
+	// ─────────────────────────────────────────────────────────────────
+	// LOCAL STATE for drawing
+	// ─────────────────────────────────────────────────────────────────
 
-        awareness.on('change', handleAwarenessChange);
+	// Track element being currently drawn
+	const [drawingElement, setDrawingElement] = useState<CanvasElement | null>(
+		null,
+	);
 
-        // Re-broadcast identity when we (re)connect
-        wsProvider.on('status', (event: any) => {
-            if (event.status === 'connected') {
-                awareness.setLocalState({
-                    point: [0, 0],
-                    color: myIdentity.color,
-                    name: myIdentity.name
-                });
-            }
-        });
+	// Freedraw points accumulator
+	const freedrawPointsRef = useRef<Array<[number, number]>>([]);
 
-        // CLEANUP
-        return () => {
-            awareness.off('change', handleAwarenessChange);
-            wsProvider.disconnect();
-            wsProvider.destroy();
-        };
-    }, [roomId, doc, myIdentity]);
+	// Container dimensions
+	const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-    // ... (rest of file)
+	// Clipboard for copy/paste
+	const [clipboard, setClipboard] = useState<CanvasElement[]>([]);
 
-    // Handle Window Unload (Tab Close) to ensure we disappear immediately
-    useEffect(() => {
-        const handleBeforeUnload = () => {
-            provider?.disconnect();
-        };
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [provider]);
+	// Context menu state
+	const [contextMenu, setContextMenu] = useState<{
+		x: number;
+		y: number;
+		visible: boolean;
+	}>({
+		x: 0,
+		y: 0,
+		visible: false,
+	});
 
+	// Export modal state
+	const [showExportModal, setShowExportModal] = useState(false);
 
+	// Reconnect function
+	const handleReconnect = useCallback(() => {
+		// The hook will automatically reconnect when the component re-initializes
+		// For now, we can just reload the page or re-establish the connection
+		window.location.reload();
+	}, []);
 
+	// ─────────────────────────────────────────────────────────────────
+	// EFFECTS
+	// ─────────────────────────────────────────────────────────────────
 
-    // Persistence State
-    const [status, setStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+	// Set container dimensions
+	useEffect(() => {
+		const updateDimensions = () => {
+			if (containerRef.current) {
+				setDimensions({
+					width: containerRef.current.clientWidth,
+					height: containerRef.current.clientHeight,
+				});
+			}
+		};
 
-    const saveCanvas = async (shapesData: Record<string, Shape>) => {
-        setStatus("saving");
-        try {
-            const response = await fetch(`http://localhost:8000/api/v1/canvas/${roomId}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ data: JSON.stringify(shapesData) }), // Wrapping to match expected format
-            });
+		updateDimensions();
+		window.addEventListener("resize", updateDimensions);
+		return () => window.removeEventListener("resize", updateDimensions);
+	}, []);
 
-            if (!response.ok) {
-                // throw new Error("Failed to save");
-                console.warn("Failed to auto-save to backend (Backend might be offline)");
-            }
-            setStatus("saved");
-        } catch (error) {
-            console.error("Auto-save error:", error);
-            setStatus("unsaved");
-        }
-    };
+	// Update selection awareness when selection changes
+	useEffect(() => {
+		updateSelection(Array.from(selectedElementIds));
+	}, [selectedElementIds, updateSelection]);
 
-    // Debounce Save Trigger
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (Object.keys(shapes).length > 0) {
-                saveCanvas(shapes);
-            }
-        }, 2000); // 2 second debounce
+	// ─────────────────────────────────────────────────────────────────
+	// COPY / PASTE / LAYER HANDLERS
+	// ─────────────────────────────────────────────────────────────────
 
-        return () => clearTimeout(timer);
-    }, [shapes]);
+	/**
+	 * Copy selected elements to clipboard
+	 */
+	const handleCopy = useCallback(() => {
+		if (selectedElementIds.size === 0) return;
 
-    const handleMouseMove = (e: any) => {
-        if (!provider) return;
-        const stage = e.target.getStage();
-        const pointerPosition = stage?.getPointerPosition();
+		const selectedElements = elements.filter((el) =>
+			selectedElementIds.has(el.id),
+		);
+		setClipboard(selectedElements);
+	}, [selectedElementIds, elements]);
 
-        if (pointerPosition) {
-            // console.log("Sending position:", pointerPosition.x, pointerPosition.y); 
-            provider.awareness.setLocalStateField('point', [
-                pointerPosition.x,
-                pointerPosition.y
-            ]);
-        }
-    };
+	/**
+	 * Paste elements from clipboard
+	 */
+	const handlePaste = useCallback(() => {
+		if (clipboard.length === 0) return;
 
-    // Tool State
-    const [selectedTool, setSelectedTool] = useState<'select' | 'rectangle' | 'circle'>('select');
-    const [selectedColor, setSelectedColor] = useState<string>("#ffcc00"); // Default Excalidraw-ish yellow
+		const newIds = new Set<string>();
+		const offset = 20; // Offset for pasted elements
 
-    const handleShare = () => {
-        const url = window.location.href;
-        navigator.clipboard.writeText(url).then(() => {
-            alert("Room link copied to clipboard!");
-        });
-    };
+		for (const el of clipboard) {
+			const newId = `${el.id}-copy-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+			const newElement: CanvasElement = {
+				...el,
+				id: newId,
+				x: el.x + offset,
+				y: el.y + offset,
+				version: 0,
+				created: Date.now(),
+				updated: Date.now(),
+			};
+			addElement(newElement);
+			newIds.add(newId);
+		}
 
-    const addShape = (type: 'rect' | 'circle') => {
-        const id = uuidv4();
-        const newShape: Shape = {
-            id,
-            type,
-            x: Math.random() * 400 + 100,
-            y: Math.random() * 400 + 100,
-            width: 100,
-            height: 100,
-            fill: selectedColor,
-            stroke: "#000000",
-            strokeWidth: 2
-        };
-        const yShapes = doc.getMap<Shape>("shapes");
-        yShapes.set(id, newShape);
-        // Reset to select tool after adding (Excalidraw style often keeps tool active, but for now simple)
-        // setSelectedTool('select'); 
-    };
+		// Select pasted elements
+		setSelectedElementIds(newIds);
+	}, [clipboard, addElement, setSelectedElementIds]);
 
-    return (
-        <div className="relative w-screen h-screen overflow-hidden bg-[#ffffff]">
-            {/* --- Dot Grid Background (CSS Pattern) --- */}
-            <div className="absolute inset-0 pointer-events-none opacity-40"
-                style={{
-                    backgroundImage: 'radial-gradient(#ddd 1px, transparent 1px)',
-                    backgroundSize: '20px 20px'
-                }}
-            />
+	/**
+	 * Bring selected elements forward (increase z-index)
+	 */
+	const handleBringForward = useCallback(() => {
+		if (selectedElementIds.size === 0) return;
 
-            {/* --- TOP HEADER (Menu & Name) --- */}
-            <div className="absolute top-4 left-4 z-20 flex items-center gap-3">
-                <div className="bg-[#ececf4] hover:bg-[#e0e0e0] p-2 rounded-lg cursor-pointer transition-colors shadow-sm border border-gray-200">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-sm font-medium text-gray-500 hover:text-gray-900 cursor-pointer transition-colors">Untitled-2024-01-13</span>
-                </div>
-            </div>
+		for (const id of selectedElementIds) {
+			const element = elements.find((el) => el.id === id);
+			if (element) {
+				updateElement(id, { zIndex: (element.zIndex || 0) + 1 });
+			}
+		}
+	}, [selectedElementIds, elements, updateElement]);
 
-            {/* --- LEFT SIDEBAR (Properties / Colors) --- */}
-            <div className="absolute top-20 left-4 z-20 flex flex-col gap-3 bg-white p-3 rounded-lg shadow-md border border-gray-200">
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Stroke</div>
-                <div className="flex gap-2">
-                    {["#000000", "#e03131", "#2f9e44", "#1971c2"].map(c => (
-                        <button
-                            key={c}
-                            onClick={() => {
-                                // If a shape is selected (todo), update it. For now just set default.
-                                // setSelectedColor(c); 
-                            }}
-                            className="w-6 h-6 rounded border border-gray-300 shadow-sm hover:scale-110 transition"
-                            style={{ backgroundColor: c }}
-                        />
-                    ))}
-                </div>
+	/**
+	 * Send selected elements backward (decrease z-index)
+	 */
+	const handleSendBackward = useCallback(() => {
+		if (selectedElementIds.size === 0) return;
 
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 mt-2">Background</div>
-                <div className="grid grid-cols-4 gap-2">
-                    {["transparent", "#ffc9c9", "#b2f2bb", "#a5d8ff", "#ffcc00"].map(c => (
-                        <button
-                            key={c}
-                            onClick={() => setSelectedColor(c)}
-                            className={`w-6 h-6 rounded border shadow-sm hover:scale-110 transition ${selectedColor === c ? 'ring-2 ring-blue-500 ring-offset-1' : 'border-gray-200'}`}
-                            style={{
-                                backgroundColor: c === 'transparent' ? 'white' : c,
-                                backgroundImage: c === 'transparent' ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
-                                backgroundSize: c === 'transparent' ? '4px 4px' : 'auto'
-                            }}
-                            title={c}
-                        />
-                    ))}
-                </div>
-            </div>
+		for (const id of selectedElementIds) {
+			const element = elements.find((el) => el.id === id);
+			if (element) {
+				updateElement(id, { zIndex: Math.max(0, (element.zIndex || 0) - 1) });
+			}
+		}
+	}, [selectedElementIds, elements, updateElement]);
 
-            {/* --- TOP CENTER TOOLBAR --- */}
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-white p-1.5 rounded-xl shadow-lg border border-gray-200 flex gap-1 items-center">
-                <button
-                    onClick={() => setSelectedTool('select')}
-                    className={`p-2.5 rounded-lg transition-all ${selectedTool === 'select' ? 'bg-[#e0dfff] text-[#5b53ff]' : 'hover:bg-[#f1f1f1] text-gray-700'}`}
-                    title="Selection — V"
-                >
-                    <Pointer className="w-5 h-5" />
-                </button>
-                <div className="w-px h-6 bg-gray-200 mx-1"></div>
-                <button
-                    onClick={() => {
-                        setSelectedTool('rectangle');
-                        addShape('rect');
-                    }}
-                    className={`p-2.5 rounded-lg transition-all ${selectedTool === 'rectangle' ? 'bg-[#e0dfff] text-[#5b53ff]' : 'hover:bg-[#f1f1f1] text-gray-700'}`}
-                    title="Rectangle — R"
-                >
-                    <Square className="w-5 h-5" />
-                </button>
-                <button
-                    onClick={() => {
-                        setSelectedTool('circle');
-                        addShape('circle');
-                    }}
-                    className={`p-2.5 rounded-lg transition-all ${selectedTool === 'circle' ? 'bg-[#e0dfff] text-[#5b53ff]' : 'hover:bg-[#f1f1f1] text-gray-700'}`}
-                    title="Circle — O"
-                >
-                    <div className="w-4 h-4 rounded-full border-2 border-currentColor"></div>
-                </button>
-                <button className="p-2.5 rounded-lg hover:bg-[#f1f1f1] text-gray-700" title="Arrow">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 10H15M15 10L10 5M15 10L10 15" /></svg>
-                </button>
-            </div>
+	/**
+	 * Bring selected elements to front (max z-index)
+	 */
+	const handleBringToFront = useCallback(() => {
+		if (selectedElementIds.size === 0) return;
 
-            {/* --- TOP RIGHT (Collaboration) --- */}
-            <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
-                {/* Avatars */}
-                <div className="flex -space-x-2 mr-2">
-                    <div
-                        className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm"
-                        style={{ backgroundColor: myIdentity.color }}
-                        title={`You (${myIdentity.name})`}
-                    >
-                        {myIdentity.name[0]}
-                    </div>
-                    {cursors.map(c => (
-                        <div
-                            key={c.id}
-                            className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm"
-                            style={{ backgroundColor: c.color }}
-                            title={c.name}
-                        >
-                            {c.name[0]}
-                        </div>
-                    ))}
-                </div>
+		const maxZ = Math.max(...elements.map((el) => el.zIndex || 0), 0);
 
-                <button
-                    onClick={handleShare}
-                    className="bg-[#6965db] hover:bg-[#5b53ff] text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-md transition-colors flex items-center gap-2"
-                >
-                    Share
-                </button>
-            </div>
+		for (const id of selectedElementIds) {
+			updateElement(id, { zIndex: maxZ + 1 });
+		}
+	}, [selectedElementIds, elements, updateElement]);
 
-            {/* --- CANVAS --- */}
-            <Stage
-                width={window.innerWidth}
-                height={window.innerHeight}
-                onMouseMove={handleMouseMove}
-                className="cursor-crosshair"
-            >
-                <Layer>
-                    {/* Shapes */}
-                    {Object.values(shapes).map((shape) => {
-                        const commonProps = {
-                            key: shape.id,
-                            x: shape.x,
-                            y: shape.y,
-                            width: shape.width,
-                            height: shape.height,
-                            fill: shape.fill,
-                            stroke: shape.stroke || "black",
-                            strokeWidth: shape.strokeWidth || 2,
-                            draggable: selectedTool === 'select',
-                            onDragEnd: (e: any) => {
-                                const yShapes = doc.getMap<Shape>("shapes");
-                                yShapes.set(shape.id, {
-                                    ...shape,
-                                    x: e.target.x(),
-                                    y: e.target.y(),
-                                });
-                            }
-                        };
+	/**
+	 * Send selected elements to back (z-index = 0)
+	 */
+	const handleSendToBack = useCallback(() => {
+		if (selectedElementIds.size === 0) return;
 
-                        if (shape.type === 'circle') {
-                            return <Circle {...commonProps} radius={shape.width / 2} width={undefined} height={undefined} offsetX={-shape.width / 2} offsetY={-shape.height / 2} />;
-                        }
+		for (const id of selectedElementIds) {
+			updateElement(id, { zIndex: 0 });
+		}
+	}, [selectedElementIds, updateElement]);
 
-                        return (
-                            <Rect
-                                {...commonProps}
-                                cornerRadius={2}
-                            />
-                        );
-                    })}
+	/**
+	 * Handle context menu (right-click)
+	 */
+	const handleContextMenu = useCallback((e: React.MouseEvent) => {
+		e.preventDefault();
+		setContextMenu({
+			x: e.clientX,
+			y: e.clientY,
+			visible: true,
+		});
+	}, []);
 
-                    {/* Cursors */}
-                    {cursors.map((cursor) => (
-                        <Group key={cursor.id}>
-                            {/* Cursor Arrow */}
-                            <Path
-                                x={cursor.point[0]}
-                                y={cursor.point[1]}
-                                fill={cursor.color}
-                                data="M0 0 L10 24 L14 14 L24 10 Z"
-                                rotation={-10}
-                                scaleX={0.8}
-                                scaleY={0.8}
-                            />
-                            {/* Label */}
-                            <Group x={cursor.point[0] + 16} y={cursor.point[1] + 16}>
-                                <Rect
-                                    fill={cursor.color}
-                                    width={cursor.name.length * 9 + 16}
-                                    height={24}
-                                    cornerRadius={4}
-                                />
-                                <Text
-                                    x={8}
-                                    y={6}
-                                    text={cursor.name}
-                                    fill="white"
-                                    fontSize={12}
-                                    fontStyle="bold"
-                                />
-                            </Group>
-                        </Group>
-                    ))}
-                </Layer>
-            </Stage>
-        </div>
-    );
+	/**
+	 * Close context menu
+	 */
+	const closeContextMenu = useCallback(() => {
+		setContextMenu((prev) => ({ ...prev, visible: false }));
+	}, []);
+
+	/**
+	 * Handle delete from context menu
+	 */
+	const handleDelete = useCallback(() => {
+		if (selectedElementIds.size > 0) {
+			deleteElements(Array.from(selectedElementIds));
+			clearSelection();
+		}
+	}, [selectedElementIds, deleteElements, clearSelection]);
+
+	// ─────────────────────────────────────────────────────────────────
+	// KEYBOARD SHORTCUTS
+	// ─────────────────────────────────────────────────────────────────
+
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			// Ignore if typing in input
+			if (
+				e.target instanceof HTMLInputElement ||
+				e.target instanceof HTMLTextAreaElement
+			) {
+				return;
+			}
+
+			// Tool shortcuts
+			const toolShortcuts: Record<string, Tool> = {
+				v: "selection",
+				h: "hand",
+				r: "rectangle",
+				o: "ellipse",
+				l: "line",
+				a: "arrow",
+				p: "freedraw",
+				t: "text",
+				e: "eraser",
+			};
+
+			const tool = toolShortcuts[e.key.toLowerCase()];
+			if (tool) {
+				setActiveTool(tool);
+				return;
+			}
+
+			// Delete selected elements
+			if (
+				(e.key === "Delete" || e.key === "Backspace") &&
+				selectedElementIds.size > 0
+			) {
+				deleteElements(Array.from(selectedElementIds));
+				clearSelection();
+				return;
+			}
+
+			// Undo: Ctrl/Cmd + Z
+			if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+				e.preventDefault();
+				undo();
+				return;
+			}
+
+			// Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
+			if (
+				(e.ctrlKey || e.metaKey) &&
+				(e.key === "y" || (e.key === "z" && e.shiftKey))
+			) {
+				e.preventDefault();
+				redo();
+				return;
+			}
+
+			// Escape: Clear selection or cancel drawing
+			if (e.key === "Escape") {
+				clearSelection();
+				setIsDrawing(false);
+				setDrawingElement(null);
+				return;
+			}
+
+			// Select all: Ctrl/Cmd + A
+			if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+				e.preventDefault();
+				setSelectedElementIds(new Set(elements.map((el) => el.id)));
+				return;
+			}
+
+			// Copy: Ctrl/Cmd + C
+			if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+				e.preventDefault();
+				handleCopy();
+				return;
+			}
+
+			// Paste: Ctrl/Cmd + V
+			if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+				e.preventDefault();
+				handlePaste();
+				return;
+			}
+
+			// Duplicate: Ctrl/Cmd + D
+			if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+				e.preventDefault();
+				handleCopy();
+				handlePaste();
+				return;
+			}
+
+			// Bring to front: Ctrl/Cmd + ]
+			if ((e.ctrlKey || e.metaKey) && e.key === "]") {
+				e.preventDefault();
+				handleBringToFront();
+				return;
+			}
+
+			// Send to back: Ctrl/Cmd + [
+			if ((e.ctrlKey || e.metaKey) && e.key === "[") {
+				e.preventDefault();
+				handleSendToBack();
+				return;
+			}
+
+			// Export: Ctrl/Cmd + E
+			if ((e.ctrlKey || e.metaKey) && e.key === "e") {
+				e.preventDefault();
+				setShowExportModal(true);
+				return;
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [
+		setActiveTool,
+		selectedElementIds,
+		deleteElements,
+		clearSelection,
+		undo,
+		redo,
+		setIsDrawing,
+		elements,
+		setSelectedElementIds,
+		handleCopy,
+		handlePaste,
+		handleBringToFront,
+		handleSendToBack,
+	]);
+
+	// ─────────────────────────────────────────────────────────────────
+	// EVENT HANDLERS
+	// ─────────────────────────────────────────────────────────────────
+
+	/**
+	 * Get canvas-relative point from mouse event
+	 */
+	const getCanvasPoint = useCallback(
+		(_e: KonvaEventObject<MouseEvent>): Point => {
+			const stage = stageRef.current;
+			if (!stage) return { x: 0, y: 0 };
+
+			const pos = stage.getPointerPosition();
+			if (!pos) return { x: 0, y: 0 };
+
+			// Account for zoom and scroll
+			return {
+				x: (pos.x - scrollX) / zoom,
+				y: (pos.y - scrollY) / zoom,
+			};
+		},
+		[scrollX, scrollY, zoom],
+	);
+
+	/**
+	 * Handle mouse down - Start drawing or selection
+	 *
+	 * FLOW:
+	 * 1. Get click position
+	 * 2. Based on active tool:
+	 *    - Selection: Check if clicking element
+	 *    - Drawing: Start new element
+	 *    - Hand: Start panning
+	 */
+	const handleMouseDown = useCallback(
+		(e: KonvaEventObject<MouseEvent>) => {
+			const point = getCanvasPoint(e);
+			setInteractionStartPoint(point);
+
+			// Don't handle if clicking on existing element (for drag)
+			const clickedOnEmpty = e.target === e.target.getStage();
+
+			switch (activeTool) {
+				case "selection":
+					if (clickedOnEmpty) {
+						clearSelection();
+					} else {
+						// Check if clicked on an element
+						const clickedElement = getElementAtPoint(point, elements);
+						if (clickedElement) {
+							if (!selectedElementIds.has(clickedElement.id)) {
+								setSelectedElementIds(new Set([clickedElement.id]));
+							}
+							setIsDragging(true);
+						}
+					}
+					break;
+
+				case "hand":
+					setIsDragging(true);
+					break;
+
+				case "rectangle": {
+					setIsDrawing(true);
+					const newRect = createRectangle(point.x, point.y, 0, 0, {
+						strokeColor: currentStrokeColor,
+						backgroundColor: currentBackgroundColor,
+						strokeWidth: currentStrokeWidth,
+						strokeStyle: currentStrokeStyle,
+						opacity: currentOpacity,
+					});
+					setDrawingElement(newRect);
+					break;
+				}
+
+				case "ellipse": {
+					setIsDrawing(true);
+					const newEllipse = createEllipse(point.x, point.y, 0, 0, {
+						strokeColor: currentStrokeColor,
+						backgroundColor: currentBackgroundColor,
+						strokeWidth: currentStrokeWidth,
+						strokeStyle: currentStrokeStyle,
+						opacity: currentOpacity,
+					});
+					setDrawingElement(newEllipse);
+					break;
+				}
+
+				case "line": {
+					setIsDrawing(true);
+					const newLine = createLine(point.x, point.y, [{ x: 0, y: 0 }], {
+						strokeColor: currentStrokeColor,
+						strokeWidth: currentStrokeWidth,
+						strokeStyle: currentStrokeStyle,
+						opacity: currentOpacity,
+					});
+					setDrawingElement(newLine);
+					break;
+				}
+
+				case "arrow": {
+					setIsDrawing(true);
+					const newArrow = createArrow(point.x, point.y, [{ x: 0, y: 0 }], {
+						strokeColor: currentStrokeColor,
+						strokeWidth: currentStrokeWidth,
+						strokeStyle: currentStrokeStyle,
+						opacity: currentOpacity,
+					});
+					setDrawingElement(newArrow);
+					break;
+				}
+
+				case "freedraw": {
+					setIsDrawing(true);
+					freedrawPointsRef.current = [[0, 0]];
+					const newFreedraw = createFreedraw(point.x, point.y, [[0, 0]], {
+						strokeColor: currentStrokeColor,
+						strokeWidth: currentStrokeWidth,
+						opacity: currentOpacity,
+					});
+					setDrawingElement(newFreedraw);
+					break;
+				}
+
+				case "text": {
+					const text = prompt("Enter text:");
+					if (text) {
+						const newText = createText(point.x, point.y, text, {
+							strokeColor: currentStrokeColor,
+							opacity: currentOpacity,
+						});
+						addElement(newText);
+					}
+					break;
+				}
+
+				case "eraser": {
+					const elementToDelete = getElementAtPoint(point, elements);
+					if (elementToDelete) {
+						deleteElements([elementToDelete.id]);
+					}
+					break;
+				}
+			}
+		},
+		[
+			getCanvasPoint,
+			activeTool,
+			elements,
+			selectedElementIds,
+			setSelectedElementIds,
+			clearSelection,
+			setIsDrawing,
+			setIsDragging,
+			setInteractionStartPoint,
+			currentStrokeColor,
+			currentBackgroundColor,
+			currentStrokeWidth,
+			currentStrokeStyle,
+			currentOpacity,
+			addElement,
+			deleteElements,
+		],
+	);
+
+	/**
+	 * Handle mouse move - Update drawing or pan
+	 *
+	 * FLOW:
+	 * 1. Update cursor position for awareness
+	 * 2. If drawing: Update element dimensions
+	 * 3. If panning: Update scroll position
+	 */
+	const handleMouseMove = useCallback(
+		(e: KonvaEventObject<MouseEvent>) => {
+			const point = getCanvasPoint(e);
+
+			// Update cursor position for collaboration
+			const stage = stageRef.current;
+			const pos = stage?.getPointerPosition();
+			if (pos) {
+				updateCursor({ x: pos.x, y: pos.y });
+			}
+
+			// Handle hand tool panning
+			if (isDragging && activeTool === "hand" && interactionStartPoint) {
+				const dx = point.x - interactionStartPoint.x;
+				const dy = point.y - interactionStartPoint.y;
+				setScroll(scrollX + dx * zoom, scrollY + dy * zoom);
+				return;
+			}
+
+			// Handle drawing
+			if (!isDrawing || !drawingElement || !interactionStartPoint) return;
+
+			const dx = point.x - interactionStartPoint.x;
+			const dy = point.y - interactionStartPoint.y;
+
+			switch (drawingElement.type) {
+				case "rectangle":
+				case "ellipse": {
+					setDrawingElement({
+						...drawingElement,
+						width: dx,
+						height: dy,
+					} as CanvasElement);
+					break;
+				}
+
+				case "line":
+				case "arrow": {
+					const lineElement = drawingElement as LineElement | ArrowElement;
+					setDrawingElement({
+						...lineElement,
+						points: [
+							{ x: 0, y: 0 },
+							{ x: dx, y: dy },
+						],
+						width: Math.abs(dx),
+						height: Math.abs(dy),
+					} as CanvasElement);
+					break;
+				}
+
+				case "freedraw": {
+					freedrawPointsRef.current.push([dx, dy]);
+					setDrawingElement({
+						...drawingElement,
+						points: [...freedrawPointsRef.current],
+					} as FreedrawElement);
+					break;
+				}
+			}
+		},
+		[
+			getCanvasPoint,
+			updateCursor,
+			isDragging,
+			activeTool,
+			interactionStartPoint,
+			scrollX,
+			scrollY,
+			zoom,
+			setScroll,
+			isDrawing,
+			drawingElement,
+		],
+	);
+
+	/**
+	 * Handle mouse up - Finish drawing
+	 *
+	 * FLOW:
+	 * 1. If drawing: Finalize element and add to Yjs
+	 * 2. Reset drawing state
+	 */
+	const handleMouseUp = useCallback(() => {
+		// Finalize drawing
+		if (isDrawing && drawingElement) {
+			// Only add if element has size
+			if (
+				Math.abs(drawingElement.width) > 5 ||
+				Math.abs(drawingElement.height) > 5
+			) {
+				// Normalize negative dimensions
+				const finalElement = { ...drawingElement };
+
+				if (finalElement.width < 0) {
+					finalElement.x += finalElement.width;
+					finalElement.width = Math.abs(finalElement.width);
+				}
+				if (finalElement.height < 0) {
+					finalElement.y += finalElement.height;
+					finalElement.height = Math.abs(finalElement.height);
+				}
+
+				// Add to Yjs - this syncs to all clients!
+				addElement(finalElement);
+
+				// Select the new element
+				setSelectedElementIds(new Set([finalElement.id]));
+			}
+		}
+
+		// Reset state
+		setIsDrawing(false);
+		setIsDragging(false);
+		setDrawingElement(null);
+		setInteractionStartPoint(null);
+		freedrawPointsRef.current = [];
+	}, [
+		isDrawing,
+		drawingElement,
+		addElement,
+		setSelectedElementIds,
+		setIsDrawing,
+		setIsDragging,
+		setInteractionStartPoint,
+	]);
+
+	/**
+	 * Handle element drag end - Update position in Yjs
+	 */
+	const handleElementDragEnd = useCallback(
+		(id: string, x: number, y: number) => {
+			updateElement(id, { x, y });
+		},
+		[updateElement],
+	);
+
+	/**
+	 * Handle mouse leave - Clear cursor from awareness
+	 */
+	const handleMouseLeave = useCallback(() => {
+		updateCursor(null);
+	}, [updateCursor]);
+
+	// ─────────────────────────────────────────────────────────────────
+	// RENDER
+	// ─────────────────────────────────────────────────────────────────
+
+	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: Context menu handler for canvas area
+		<div
+			ref={containerRef}
+			className="relative w-full h-full overflow-hidden"
+			style={{ backgroundColor: "#fafafa" }}
+			onContextMenu={handleContextMenu}
+		>
+			{/* Clean dot grid background - Excalidraw style */}
+			<div
+				className="absolute inset-0 pointer-events-none"
+				style={{
+					backgroundImage: `
+            radial-gradient(circle, #d4d4d4 1px, transparent 1px)
+          `,
+					backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
+					backgroundPosition: `${scrollX}px ${scrollY}px`,
+				}}
+			/>
+
+			{/* UI Components */}
+			<HeaderLeft />
+			<HeaderRight />
+			<Toolbar />
+			<PropertiesPanel />
+			<ZoomControls />
+			<HelpPanel />
+
+			{/* Collaborator Cursors */}
+			<CollaboratorCursors collaborators={collaborators} />
+
+			{/* Connection Status */}
+			<ConnectionStatus
+				isConnected={isConnected}
+				isSynced={isSynced}
+				collaboratorCount={collaborators.length}
+				onReconnect={handleReconnect}
+			/>
+
+			{/* Canvas Stage */}
+			<Stage
+				ref={stageRef}
+				width={dimensions.width || window.innerWidth}
+				height={dimensions.height || window.innerHeight}
+				scaleX={zoom}
+				scaleY={zoom}
+				x={scrollX}
+				y={scrollY}
+				onMouseDown={handleMouseDown}
+				onMouseMove={handleMouseMove}
+				onMouseUp={handleMouseUp}
+				onMouseLeave={handleMouseLeave}
+				style={{
+					cursor:
+						activeTool === "hand"
+							? isDragging
+								? "grabbing"
+								: "grab"
+							: activeTool === "selection"
+								? "default"
+								: "crosshair",
+				}}
+			>
+				<Layer>
+					{/* Render existing elements */}
+					{elements.map((element) =>
+						renderElement(
+							element,
+							selectedElementIds.has(element.id),
+							activeTool === "selection",
+							handleElementDragEnd,
+						),
+					)}
+
+					{/* Render element being drawn */}
+					{drawingElement &&
+						renderElement(drawingElement, false, false, () => {})}
+
+					{/* Selection indicator for selected elements */}
+					{activeTool === "selection" &&
+						selectedElementIds.size > 0 &&
+						elements
+							.filter((el) => selectedElementIds.has(el.id))
+							.map((el) => (
+								<Rect
+									key={`selection-${el.id}`}
+									x={el.x - 4}
+									y={el.y - 4}
+									width={(el.width || 0) + 8}
+									height={(el.height || 0) + 8}
+									stroke="#6965db"
+									strokeWidth={1}
+									dash={[4, 4]}
+									listening={false}
+								/>
+							))}
+				</Layer>
+			</Stage>
+
+			{/* Help Text (bottom right) */}
+			<div className="absolute bottom-4 right-4 z-20 text-xs text-gray-400">
+				Press <kbd className="px-1 py-0.5 bg-gray-100 rounded">?</kbd> for
+				shortcuts
+			</div>
+
+			{/* Context Menu */}
+			<ContextMenu
+				x={contextMenu.x}
+				y={contextMenu.y}
+				isVisible={contextMenu.visible}
+				hasSelection={selectedElementIds.size > 0}
+				onClose={closeContextMenu}
+				onCopy={handleCopy}
+				onPaste={handlePaste}
+				onDelete={handleDelete}
+				onBringForward={handleBringForward}
+				onSendBackward={handleSendBackward}
+				onBringToFront={handleBringToFront}
+				onSendToBack={handleSendToBack}
+			/>
+
+			{/* Export Modal */}
+			<ExportModal
+				isOpen={showExportModal}
+				onClose={() => setShowExportModal(false)}
+				elements={elements}
+				stageRef={stageRef}
+			/>
+		</div>
+	);
 }

@@ -1,54 +1,191 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 :root {
-	--background: #ffffff;
-	--foreground: #171717;
+	/* Light cream/white background like the logo */
+	--background: #f8f7f4;
+	--foreground: #1a1a2e;
+
+	/* Cards slightly off-white */
+	--card: #ffffff;
+	--card-foreground: #1a1a2e;
+
+	/* Purple primary (from logo) */
+	--primary: #7c3aed;
+	--primary-foreground: #ffffff;
+
+	/* Gold accent (from logo's flowing lines) */
+	--accent: #d4a574;
+	--accent-foreground: #1a1a2e;
+
+	/* Secondary - lighter purple */
+	--secondary: #ede9fe;
+	--secondary-foreground: #5b21b6;
+
+	/* Muted */
+	--muted: #e8e6e1;
+	--muted-foreground: #64748b;
+
+	/* Borders */
+	--border: #e2e0db;
+	--input: #e2e0db;
+	--ring: #7c3aed;
+
+	--radius: 0.75rem;
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--background: #0a0a0a;
-		--foreground: #ededed;
-	}
-}
-
-html,
 body {
-	max-width: 100vw;
-	overflow-x: hidden;
-}
-
-body {
+	background-color: var(--background);
 	color: var(--foreground);
-	background: var(--background);
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
-* {
-	box-sizing: border-box;
-	padding: 0;
-	margin: 0;
-}
+/* ========================================================================
+   ANIMATIONS
+   ======================================================================== */
 
-a {
-	color: inherit;
-	text-decoration: none;
-}
-
-.imgDark {
-	display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-	html {
-		color-scheme: dark;
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
 	}
+}
 
-	.imgLight {
-		display: none;
+@keyframes pulse-dot {
+	0%,
+	100% {
+		opacity: 1;
 	}
-	.imgDark {
-		display: unset;
+	50% {
+		opacity: 0.5;
 	}
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slide-down {
+	from {
+		opacity: 0;
+		transform: translateY(-8px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes scale-in {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* ========================================================================
+   SCROLLBAR
+   ======================================================================== */
+
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #d1d5db;
+	border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #9ca3af;
+}
+
+/* ========================================================================
+   SELECTION
+   ======================================================================== */
+
+::selection {
+	background-color: rgba(124, 58, 237, 0.15);
+	color: #1a1a2e;
+}
+
+/* ========================================================================
+   CANVAS-SPECIFIC
+   ======================================================================== */
+
+/* Range input styling */
+input[type="range"] {
+	-webkit-appearance: none;
+	appearance: none;
+	height: 6px;
+	border-radius: 999px;
+	background: #e2e8f0;
+	outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #7c3aed;
+	cursor: pointer;
+	border: 2px solid white;
+	box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+}
+
+input[type="range"]::-moz-range-thumb {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #7c3aed;
+	cursor: pointer;
+	border: 2px solid white;
+	box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+}
+
+/* Glass card utility */
+.glass-card {
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(12px);
+	border: 1px solid rgba(229, 231, 235, 0.8);
+	box-shadow:
+		0 4px 24px rgba(0, 0, 0, 0.06),
+		0 1px 5px rgba(0, 0, 0, 0.04);
+}
+
+.glass-card-elevated {
+	background: rgba(255, 255, 255, 0.96);
+	backdrop-filter: blur(16px);
+	border: 1px solid rgba(229, 231, 235, 0.9);
+	box-shadow:
+		0 8px 32px rgba(0, 0, 0, 0.08),
+		0 2px 8px rgba(0, 0, 0, 0.04);
 }
