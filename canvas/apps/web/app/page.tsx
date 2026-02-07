@@ -53,7 +53,6 @@ export default function Home() {
 						</div>
 					</div>
 
-					{/* Join Form */}
 					<form onSubmit={joinRoom} className="space-y-4">
 						<div>
 							<label
