@@ -1,21 +1,25 @@
-import { File, Grid, List, Trash2 } from "lucide-react";
+import { File, Grid, List, Plus, Share2, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.client";
 import { Button } from "./ui/Button";
 
+const HTTP_URL = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8000";
+
 interface Canvas {
 	id: string;
 	name: string;
 	updated_at: string;
 	thumbnail_url: string | null;
+	owner_id: string;
 }
 
 export function Dashboard() {
 	const [canvases, setCanvases] = useState<Canvas[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 	const router = useRouter();
 
 	useEffect(() => {
@@ -29,15 +33,18 @@ export function Dashboard() {
 				return;
 			}
 
+			setCurrentUserId(session.user.id);
+
 			try {
-				const res = await fetch("http://localhost:8000/api/v1/canvas", {
+				const res = await fetch(`${HTTP_URL}/api/v1/canvas`, {
 					headers: {
 						Authorization: `Bearer ${session.access_token}`,
 					},
 				});
 				if (res.ok) {
-					const data = await res.json();
-					setCanvases(Array.isArray(data.canvases) ? data.canvases : []);
+					const json = await res.json();
+					const list = json?.data?.canvases ?? json?.canvases ?? [];
+					setCanvases(Array.isArray(list) ? list : []);
 				}
 			} catch (e) {
 				console.error(e);
@@ -59,7 +66,7 @@ export function Dashboard() {
 		if (!session) return;
 
 		try {
-			await fetch(`http://localhost:8000/api/v1/canvas/${id}`, {
+			await fetch(`${HTTP_URL}/api/v1/canvas/${id}`, {
 				method: "DELETE",
 				headers: { Authorization: `Bearer ${session.access_token}` },
 			});
@@ -101,7 +108,37 @@ export function Dashboard() {
 				<p className="text-gray-500 text-center max-w-sm mb-6">
 					Create your first canvas to start brainstorming with your team.
 				</p>
-				<Button onClick={() => router.push(`/canvas/${crypto.randomUUID()}`)}>
+				<Button
+					onClick={async () => {
+						const {
+							data: { session },
+						} = await supabase.auth.getSession();
+						if (!session) {
+							router.push("/login");
+							return;
+						}
+						try {
+							const res = await fetch(
+								`${HTTP_URL}/api/v1/canvas/create-canvas`,
+								{
+									method: "POST",
+									headers: {
+										"Content-Type": "application/json",
+										Authorization: `Bearer ${session.access_token}`,
+									},
+									body: JSON.stringify({ name: "Untitled Canvas" }),
+								},
+							);
+							if (res.ok) {
+								const data = await res.json();
+								router.push(`/canvas/${data.data.roomId}`);
+							}
+						} catch (e) {
+							console.error(e);
+						}
+					}}
+				>
+					<Plus className="w-4 h-4 mr-2" />
 					Create Canvas
 				</Button>
 			</div>
@@ -187,21 +224,31 @@ export function Dashboard() {
 							{/* Info */}
 							<div className="p-3 flex items-center justify-between border-t border-gray-100">
 								<div className="min-w-0 flex-1">
-									<h3 className="font-medium text-sm text-gray-900 truncate">
-										{canvas.name || "Untitled"}
-									</h3>
+									<div className="flex items-center gap-1.5">
+										<h3 className="font-medium text-sm text-gray-900 truncate">
+											{canvas.name || "Untitled"}
+										</h3>
+										{currentUserId && canvas.owner_id !== currentUserId && (
+											<span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600 bg-violet-50 rounded-full">
+												<Share2 size={10} />
+												Shared
+											</span>
+										)}
+									</div>
 									<p className="text-xs text-gray-500 mt-0.5">
 										{formatDate(canvas.updated_at)}
 									</p>
 								</div>
 
-								<button
-									type="button"
-									onClick={(e) => handleDelete(canvas.id, e)}
-									className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-								>
-									<Trash2 size={14} />
-								</button>
+								{(!currentUserId || canvas.owner_id === currentUserId) && (
+									<button
+										type="button"
+										onClick={(e) => handleDelete(canvas.id, e)}
+										className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+									>
+										<Trash2 size={14} />
+									</button>
+								)}
 							</div>
 						</div>
 					))}
@@ -228,9 +275,17 @@ export function Dashboard() {
 									<File size={18} className="text-violet-500" />
 								</div>
 								<div className="min-w-0">
-									<h3 className="font-medium text-gray-900 truncate">
-										{canvas.name || "Untitled"}
-									</h3>
+									<div className="flex items-center gap-1.5">
+										<h3 className="font-medium text-gray-900 truncate">
+											{canvas.name || "Untitled"}
+										</h3>
+										{currentUserId && canvas.owner_id !== currentUserId && (
+											<span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600 bg-violet-50 rounded-full">
+												<Share2 size={10} />
+												Shared
+											</span>
+										)}
+									</div>
 									<p className="text-xs text-gray-500">
 										Edited {formatDate(canvas.updated_at)}
 									</p>
@@ -241,13 +296,15 @@ export function Dashboard() {
 								<Button variant="secondary" size="sm">
 									Open
 								</Button>
-								<button
-									type="button"
-									onClick={(e) => handleDelete(canvas.id, e)}
-									className="p-2 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50"
-								>
-									<Trash2 size={14} />
-								</button>
+								{(!currentUserId || canvas.owner_id === currentUserId) && (
+									<button
+										type="button"
+										onClick={(e) => handleDelete(canvas.id, e)}
+										className="p-2 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50"
+									>
+										<Trash2 size={14} />
+									</button>
+								)}
 							</div>
 						</div>
 					))}

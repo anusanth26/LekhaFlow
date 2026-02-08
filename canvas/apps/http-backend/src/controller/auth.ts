@@ -1,5 +1,5 @@
 import { SigninSchema, SignupSchema } from "@repo/common";
-import { serverEnv } from "@repo/config";
+import { serverEnv } from "@repo/config/server";
 import { HttpError, JSONCookieResponse, JSONResponse } from "@repo/http-core";
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -75,4 +75,56 @@ export const signin = async (req: Request, res: Response) => {
 			token: data.session.access_token,
 		},
 	);
+};
+
+export const getMe = async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+
+	const user = req.user;
+
+	const { data } = await createServiceClient()
+		.from("users")
+		.select("*")
+		.eq("id", user.id)
+		.maybeSingle();
+
+	return JSONResponse(res, StatusCodes.OK, "User profile", {
+		user: data || {
+			id: user.id,
+			email: user.email,
+			name:
+				user.user_metadata?.name ||
+				user.user_metadata?.full_name ||
+				user.email?.split("@")[0],
+			avatar_url:
+				user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+		},
+	});
+};
+
+export const syncUser = async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+
+	const user = req.user;
+	const { syncUserService } = await import("../services/canvas.js");
+
+	const syncedUser = await syncUserService({
+		id: user.id,
+		email: user.email || "",
+		name:
+			user.user_metadata?.name ||
+			user.user_metadata?.full_name ||
+			user.email?.split("@")[0] ||
+			"User",
+		avatar_url:
+			user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+	});
+
+	return JSONResponse(res, StatusCodes.OK, "User synced successfully", {
+		user: syncedUser,
+	});
 };

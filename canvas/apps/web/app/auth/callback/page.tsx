@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase.client";
 
+const HTTP_URL = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8000";
+
 function Loading() {
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
@@ -43,6 +45,23 @@ function AuthCallbackContent() {
 				if (!retrySession) {
 					setError("Failed to authenticate. Please try again.");
 					return;
+				}
+			}
+
+			// Sync user profile to public.users table
+			const activeSession =
+				session ?? (await supabase.auth.getSession()).data.session;
+			if (activeSession) {
+				try {
+					await fetch(`${HTTP_URL}/api/v1/auth/sync-user`, {
+						method: "POST",
+						headers: {
+							Authorization: `Bearer ${activeSession.access_token}`,
+							"Content-Type": "application/json",
+						},
+					});
+				} catch (e) {
+					console.warn("[AuthCallback] User sync failed (non-critical):", e);
 				}
 			}
 

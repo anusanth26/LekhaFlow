@@ -16,6 +16,7 @@
 
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { CanvasElement, Collaborator, Point } from "@repo/common";
+import { clientEnv } from "@repo/config/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { useCanvasStore } from "../store";
@@ -24,7 +25,7 @@ import { useCanvasStore } from "../store";
 // CONFIGURATION
 // ============================================================================
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
+const WS_URL = clientEnv.NEXT_PUBLIC_WS_URL;
 
 // ============================================================================
 // TYPES
@@ -95,6 +96,24 @@ export function useYjsSync(
 		myColor,
 	} = useCanvasStore();
 
+	// Use refs for identity to avoid reconnection loops when identity changes
+	const myNameRef = useRef(myName);
+	const myColorRef = useRef(myColor);
+
+	// Keep refs in sync and update awareness when identity changes
+	useEffect(() => {
+		myNameRef.current = myName;
+		myColorRef.current = myColor;
+
+		// Update awareness on existing provider without reconnecting
+		if (providerRef.current?.awareness) {
+			providerRef.current.awareness.setLocalStateField("user", {
+				name: myName,
+				color: myColor,
+			});
+		}
+	}, [myName, myColor]);
+
 	// ─────────────────────────────────────────────────────────────────
 	// GET SHARED DATA STRUCTURES
 	// ─────────────────────────────────────────────────────────────────
@@ -128,10 +147,10 @@ export function useYjsSync(
 				console.log("[Hocuspocus] Synced");
 				setConnectionStatus(true, true);
 
-				// Set local awareness state
+				// Set local awareness state using refs (not reactive values)
 				provider.awareness?.setLocalStateField("user", {
-					name: myName,
-					color: myColor,
+					name: myNameRef.current,
+					color: myColorRef.current,
 				});
 			},
 			onDisconnect: () => {
@@ -238,8 +257,6 @@ export function useYjsSync(
 		roomId,
 		token,
 		doc,
-		myName,
-		myColor,
 		setElements,
 		setCollaborators,
 		setConnectionStatus,

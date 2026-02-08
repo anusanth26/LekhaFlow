@@ -75,7 +75,11 @@ const server = Server.configure({
 					return data.data;
 				}
 
-				console.log("[Hocuspocus] Unexpected data format:", typeof data.data);
+				// data.data is null or some other non-string type — start fresh
+				console.log(
+					"[Hocuspocus] No binary data stored yet for:",
+					documentName,
+				);
 				return null;
 			},
 
@@ -90,62 +94,98 @@ const server = Server.configure({
 
 				// Convert Uint8Array to hex string with \x prefix for bytea column
 				const hexData = `\\x${Buffer.from(state).toString("hex")}`;
-				console.log(
-					"[Hocuspocus] Converted state to hex, length:",
-					hexData.length,
-					"first chars:",
-					hexData.slice(0, 30),
-				);
 
-				const { error } = await supabase.from("canvases").upsert(
-					{
+				// Check if canvas already exists
+				const { data: existing } = await supabase
+					.from("canvases")
+					.select("id")
+					.eq("id", documentName)
+					.maybeSingle();
+
+				if (existing) {
+					// Canvas exists — only update data and timestamp (don't overwrite name/owner)
+					const { error } = await supabase
+						.from("canvases")
+						.update({
+							data: hexData,
+							updated_at: new Date().toISOString(),
+						})
+						.eq("id", documentName);
+
+					if (error) {
+						console.error("[Hocuspocus] Error updating canvas:", error.message);
+					} else {
+						console.log("[Hocuspocus] Updated canvas:", documentName);
+					}
+				} else if (userId) {
+					// Canvas does not exist — create it (needs owner_id)
+					const { error } = await supabase.from("canvases").insert({
 						id: documentName,
 						data: hexData,
 						updated_at: new Date().toISOString(),
-						// Include owner_id for new inserts (required by foreign key constraint)
-						...(userId && { owner_id: userId }),
-						// Provide a default name for new canvases
+						owner_id: userId,
 						name: `Canvas ${documentName.slice(0, 8)}`,
-					},
-					{ onConflict: "id" },
-				);
+					});
 
-				if (error) {
-					console.error("[Hocuspocus] Error saving canvas:", error.message);
+					if (error) {
+						console.error(
+							"[Hocuspocus] Error inserting canvas:",
+							error.message,
+						);
+					} else {
+						console.log("[Hocuspocus] Inserted new canvas:", documentName);
+					}
 				} else {
-					console.log("[Hocuspocus] Successfully saved canvas:", documentName);
+					console.error(
+						"[Hocuspocus] Cannot create canvas without userId:",
+						documentName,
+					);
 				}
 			},
 		}),
 	],
 
 	async onAuthenticate(data) {
-		const { token } = data;
-
-		console.log(
-			"[Hocuspocus] onAuthenticate called, token length:",
-			token?.length,
-		);
+		const { token, documentName } = data;
 
 		if (!token) {
-			console.log("[Hocuspocus] No token provided");
 			throw new Error("Unauthorized: No token provided");
 		}
 
-		console.log("[Hocuspocus] Validating token with Supabase...");
 		const {
 			data: { user },
 			error,
 		} = await supabase.auth.getUser(token);
 
-		console.log("[Hocuspocus] getUser result:", {
-			user: user?.id,
-			error: error?.message,
-		});
-
 		if (error || !user) {
-			console.log("[Hocuspocus] Auth failed:", error?.message);
 			throw new Error("Unauthorized: Invalid token");
+		}
+
+		// Track that this user accessed this canvas (for shared canvas dashboard)
+		// Use upsert-like logic: insert only if no recent entry exists
+		try {
+			// Check for existing recent access log (within last hour to avoid spam)
+			const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+			const { data: existingLog } = await supabase
+				.from("activity_logs")
+				.select("id")
+				.eq("canvas_id", documentName)
+				.eq("user_id", user.id)
+				.eq("action", "accessed")
+				.gte("created_at", oneHourAgo)
+				.maybeSingle();
+
+			if (!existingLog) {
+				await supabase.from("activity_logs").insert({
+					canvas_id: documentName,
+					user_id: user.id,
+					action: "accessed",
+					details: null,
+				});
+			}
+		} catch (e) {
+			// Non-critical — don't block auth if activity log fails
+			console.warn("[Hocuspocus] Failed to log access:", e);
 		}
 
 		return {
