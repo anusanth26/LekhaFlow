@@ -325,18 +325,6 @@ interface CanvasActions {
 // ============================================================================
 
 // Random name and color generators for user identity
-const NAMES = [
-	"Unicorn",
-	"Tiger",
-	"Eagle",
-	"Panda",
-	"Fox",
-	"Koala",
-	"Badger",
-	"Lion",
-	"Wolf",
-	"Bear",
-];
 const USER_COLORS = [
 	"#FF5733",
 	"#33FF57",
@@ -348,8 +336,6 @@ const USER_COLORS = [
 	"#33FFA1",
 ];
 
-const getRandomName = () =>
-	NAMES[Math.floor(Math.random() * NAMES.length)] || "User";
 const getRandomColor = () =>
 	USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)] || "#FF5733";
 
@@ -394,8 +380,8 @@ const initialState: CanvasState = {
 	isSynced: false,
 	roomId: null,
 
-	// Identity
-	myName: getRandomName(),
+	// Identity - set by CanvasAuthWrapper from actual user data
+	myName: "User",
 	myColor: getRandomColor(),
 };
 
