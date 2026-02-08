@@ -1,8 +1,9 @@
 function assertClientEnv<T extends Record<string, string | undefined>>(
 	env: T,
 ): asserts env is { [K in keyof T]: NonNullable<T[K]> } {
-	// Skip validation during build time (e.g., CI/CD)
-	if (typeof window === "undefined" && process.env.NODE_ENV !== "production") {
+	// Skip validation during build/SSR (server-side rendering)
+	// Only validate in the browser at runtime
+	if (typeof window === "undefined") {
 		return;
 	}
 
