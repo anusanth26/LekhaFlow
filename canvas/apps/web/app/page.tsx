@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, Plus, Sparkles, Users, Zap } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -32,9 +33,11 @@ export default function Home() {
 			<nav className="border-b border-gray-200/60 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
 				<div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
 					<Link href="/" className="flex items-center gap-2.5 group">
-						<img
+						<Image
 							src="/logo.jpg"
 							alt="LekhaFlow"
+							width={36}
+							height={36}
 							className="h-9 w-auto rounded-lg"
 						/>
 						<span className="font-heading text-lg font-bold text-gray-900">

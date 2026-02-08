@@ -1,4 +1,5 @@
 import { File, Grid, List, Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.client";
@@ -167,9 +168,10 @@ export function Dashboard() {
 								/>
 
 								{canvas.thumbnail_url ? (
-									<img
+									<Image
 										src={canvas.thumbnail_url}
 										alt={canvas.name}
+										fill
 										className="w-full h-full object-cover"
 									/>
 								) : (

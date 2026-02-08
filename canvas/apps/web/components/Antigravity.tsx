@@ -140,7 +140,8 @@ const AntigravityInner: React.FC<AntigravityProps> = ({
 		const globalRotation = state.clock.getElapsedTime() * rotationSpeed;
 
 		for (let i = 0; i < particles.length; i++) {
-			const particle = particles[i]!;
+			const particle = particles[i];
+			if (!particle) continue;
 			const { speed, mx, my, mz, cz, randomRadiusOffset } = particle;
 
 			particle.t += speed / 2;

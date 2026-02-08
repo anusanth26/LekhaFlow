@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import Antigravity from "../../components/Antigravity";
@@ -65,9 +66,11 @@ export default function LoginPage() {
 			<div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl p-10 sm:p-12 max-w-[420px] w-full shadow-2xl shadow-black/20 animate-scale-in">
 				{/* Logo */}
 				<div className="flex justify-center mb-8">
-					<img
+					<Image
 						src="/logo.jpg"
 						alt="LekhaFlow"
+						width={64}
+						height={64}
 						className="h-16 w-auto rounded-2xl shadow-lg shadow-violet-500/30"
 					/>
 				</div>
