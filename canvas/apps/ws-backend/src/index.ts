@@ -89,7 +89,7 @@ const server = Server.configure({
 				}
 
 				// Convert Uint8Array to hex string with \x prefix for bytea column
-				const hexData = "\\x" + Buffer.from(state).toString("hex");
+				const hexData = `\\x${Buffer.from(state).toString("hex")}`;
 				console.log(
 					"[Hocuspocus] Converted state to hex, length:",
 					hexData.length,
