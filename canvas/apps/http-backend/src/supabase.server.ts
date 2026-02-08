@@ -1,4 +1,4 @@
-import { serverEnv } from "@repo/config";
+import { serverEnv } from "@repo/config/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const createServiceClient = () => {
