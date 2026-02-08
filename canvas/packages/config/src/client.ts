@@ -8,11 +8,18 @@ function assertClientEnv<T extends Record<string, string | undefined>>(
 	}
 }
 
-export const clientEnv = {
+const _clientEnv = {
 	NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
 	NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 	NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
 	NEXT_PUBLIC_HTTP_URL: process.env.NEXT_PUBLIC_HTTP_URL,
 };
 
-assertClientEnv(clientEnv);
+assertClientEnv(_clientEnv);
+
+export const clientEnv: {
+	NEXT_PUBLIC_SUPABASE_URL: string;
+	NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
+	NEXT_PUBLIC_WS_URL: string;
+	NEXT_PUBLIC_HTTP_URL: string;
+} = _clientEnv;
