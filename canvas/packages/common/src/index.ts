@@ -1,2 +1,2 @@
-export * from "./types";
 export * from "./canvas.types";
+export * from "./types";
