@@ -57,53 +57,22 @@ function MenuItem({
 			type="button"
 			onClick={onClick}
 			disabled={disabled}
-			style={{
-				width: "100%",
-				display: "flex",
-				alignItems: "center",
-				gap: "12px",
-				padding: "10px 14px",
-				border: "none",
-				backgroundColor: "transparent",
-				cursor: disabled ? "not-allowed" : "pointer",
-				opacity: disabled ? 0.4 : 1,
-				transition: "background-color 0.1s",
-				borderRadius: "8px",
-			}}
-			onMouseEnter={(e) => {
-				if (!disabled) {
-					e.currentTarget.style.backgroundColor = danger
-						? "#fef2f2"
-						: "#f8fafc";
-				}
-			}}
-			onMouseLeave={(e) => {
-				e.currentTarget.style.backgroundColor = "transparent";
-			}}
+			className={`w-full flex items-center gap-3 px-3.5 py-2.5 border-none bg-transparent rounded-lg transition-colors ${
+				disabled
+					? "cursor-not-allowed opacity-40"
+					: `cursor-pointer ${danger ? "hover:bg-red-50" : "hover:bg-gray-50"}`
+			}`}
 		>
-			<span style={{ color: danger ? "#ef4444" : "#64748b" }}>{icon}</span>
+			<span className={danger ? "text-red-500" : "text-gray-500"}>{icon}</span>
 			<span
-				style={{
-					flex: 1,
-					textAlign: "left",
-					fontSize: "13px",
-					fontWeight: 500,
-					color: danger ? "#ef4444" : "#374151",
-				}}
+				className={`flex-1 text-left text-[13px] font-medium ${
+					danger ? "text-red-500" : "text-gray-700"
+				}`}
 			>
 				{label}
 			</span>
 			{shortcut && (
-				<kbd
-					style={{
-						padding: "2px 6px",
-						fontSize: "11px",
-						fontFamily: "monospace",
-						color: "#9ca3af",
-						backgroundColor: "#f1f5f9",
-						borderRadius: "4px",
-					}}
-				>
+				<kbd className="px-1.5 py-0.5 text-[11px] font-mono text-gray-400 bg-gray-100 rounded">
 					{shortcut}
 				</kbd>
 			)}
@@ -132,14 +101,7 @@ export function ContextMenu({
 			{/* Backdrop */}
 			<button
 				type="button"
-				style={{
-					position: "fixed",
-					inset: 0,
-					zIndex: 998,
-					background: "transparent",
-					border: "none",
-					cursor: "default",
-				}}
+				className="fixed inset-0 z-[998] bg-transparent border-none cursor-default"
 				onClick={onClose}
 				onContextMenu={(e) => {
 					e.preventDefault();
@@ -150,24 +112,14 @@ export function ContextMenu({
 
 			{/* Menu */}
 			<div
-				style={{
-					position: "fixed",
-					left: x,
-					top: y,
-					zIndex: 999,
-					backgroundColor: "white",
-					borderRadius: "12px",
-					boxShadow: "0 10px 40px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1)",
-					border: "1px solid #e5e7eb",
-					padding: "6px",
-					minWidth: "200px",
-				}}
+				className="fixed z-[999] glass-card-elevated rounded-xl p-1.5 min-w-[200px] animate-scale-in"
+				style={{ left: x, top: y }}
 			>
 				{/* Clipboard Actions */}
 				<MenuItem
 					icon={<Copy size={16} />}
 					label="Copy"
-					shortcut="⌘C"
+					shortcut="Ctrl+C"
 					onClick={() => {
 						onCopy();
 						onClose();
@@ -177,7 +129,7 @@ export function ContextMenu({
 				<MenuItem
 					icon={<ClipboardPaste size={16} />}
 					label="Paste"
-					shortcut="⌘V"
+					shortcut="Ctrl+V"
 					onClick={() => {
 						onPaste();
 						onClose();
@@ -185,28 +137,17 @@ export function ContextMenu({
 				/>
 
 				{/* Separator */}
-				<div
-					style={{ height: "1px", backgroundColor: "#e5e7eb", margin: "6px 0" }}
-				/>
+				<div className="h-px bg-gray-200 my-1.5" />
 
 				{/* Layer Actions */}
-				<div
-					style={{
-						padding: "6px 14px 4px",
-						fontSize: "11px",
-						fontWeight: 600,
-						color: "#9ca3af",
-						textTransform: "uppercase",
-						letterSpacing: "0.5px",
-					}}
-				>
-					<Layers size={12} style={{ display: "inline", marginRight: "6px" }} />
+				<div className="px-3.5 pt-1.5 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+					<Layers size={12} />
 					Layers
 				</div>
 				<MenuItem
 					icon={<ChevronsUp size={16} />}
 					label="Bring to Front"
-					shortcut="⌘]"
+					shortcut="Ctrl+]"
 					onClick={() => {
 						onBringToFront();
 						onClose();
@@ -234,7 +175,7 @@ export function ContextMenu({
 				<MenuItem
 					icon={<ChevronsDown size={16} />}
 					label="Send to Back"
-					shortcut="⌘["
+					shortcut="Ctrl+["
 					onClick={() => {
 						onSendToBack();
 						onClose();
@@ -243,9 +184,7 @@ export function ContextMenu({
 				/>
 
 				{/* Separator */}
-				<div
-					style={{ height: "1px", backgroundColor: "#e5e7eb", margin: "6px 0" }}
-				/>
+				<div className="h-px bg-gray-200 my-1.5" />
 
 				{/* Delete */}
 				<MenuItem

@@ -18,7 +18,16 @@
 			"recommended": true,
 			"suspicious": {
 				"noUnknownAtRules": "off"
+			},
+			"a11y": {
+				"useSemanticElements": "off"
 			}
+		}
+	},
+	"css": {
+		"parser": {
+			"cssModules": true,
+			"tailwindDirectives": true
 		}
 	},
 	"javascript": {

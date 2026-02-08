@@ -253,13 +253,10 @@ export function useYjsSync(
 
 	const addElement = useCallback(
 		(element: CanvasElement) => {
-			console.log("[DEBUG] addElement called with:", element.id, element.type);
 			const yElements = getYElements();
-			console.log("[DEBUG] Current yElements count BEFORE:", yElements.size);
 			doc.transact(() => {
 				yElements.set(element.id, element);
 			});
-			console.log("[DEBUG] Current yElements count AFTER:", yElements.size);
 		},
 		[doc, getYElements],
 	);

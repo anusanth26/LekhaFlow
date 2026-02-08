@@ -9,15 +9,7 @@
 "use client";
 
 import type { CanvasElement } from "@repo/common";
-import {
-	Check,
-	Download,
-	FileCode,
-	FileJson,
-	Image,
-	Loader2,
-	X,
-} from "lucide-react";
+import { Download, FileCode, FileJson, Image, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 
@@ -36,30 +28,26 @@ interface ExportOption {
 	icon: React.ReactNode;
 	label: string;
 	description: string;
-	color: string;
 }
 
 const EXPORT_OPTIONS: ExportOption[] = [
 	{
 		id: "png",
-		icon: <Image size={24} />,
-		label: "PNG Image",
-		description: "Raster image, best for sharing",
-		color: "#22c55e",
+		icon: <Image size={22} />,
+		label: "PNG",
+		description: "Raster image",
 	},
 	{
 		id: "svg",
-		icon: <FileCode size={24} />,
-		label: "SVG Vector",
-		description: "Scalable, editable in design tools",
-		color: "#f97316",
+		icon: <FileCode size={22} />,
+		label: "SVG",
+		description: "Scalable vector",
 	},
 	{
 		id: "json",
-		icon: <FileJson size={24} />,
-		label: "JSON Data",
-		description: "Raw data, can be imported later",
-		color: "#8b5cf6",
+		icon: <FileJson size={22} />,
+		label: "JSON",
+		description: "Raw data",
 	},
 ];
 
@@ -94,7 +82,6 @@ export function ExportModal({
 				}
 
 				case "svg": {
-					// Generate SVG from elements
 					const svg = generateSVG(elements, includeBackground);
 					const blob = new Blob([svg], { type: "image/svg+xml" });
 					const url = URL.createObjectURL(blob);
@@ -119,7 +106,6 @@ export function ExportModal({
 				}
 			}
 
-			// Small delay for UX
 			await new Promise((r) => setTimeout(r, 500));
 			onClose();
 		} catch (error) {
@@ -142,7 +128,6 @@ export function ExportModal({
 		elements: CanvasElement[],
 		withBackground: boolean,
 	): string => {
-		// Calculate bounds
 		let minX = Infinity,
 			minY = Infinity,
 			maxX = -Infinity,
@@ -202,87 +187,29 @@ export function ExportModal({
 	if (!isOpen) return null;
 
 	return (
-		<div
-			style={{
-				position: "fixed",
-				inset: 0,
-				zIndex: 1000,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				padding: "16px",
-			}}
-		>
+		<div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
 			{/* Backdrop */}
 			<button
 				type="button"
-				style={{
-					position: "absolute",
-					inset: 0,
-					backgroundColor: "rgba(0,0,0,0.5)",
-					backdropFilter: "blur(4px)",
-					border: "none",
-					cursor: "default",
-				}}
+				className="absolute inset-0 bg-black/50 backdrop-blur-sm border-none cursor-default"
 				onClick={onClose}
 				aria-hidden="true"
 				tabIndex={-1}
 			/>
 
 			{/* Modal */}
-			<div
-				style={{
-					position: "relative",
-					backgroundColor: "white",
-					borderRadius: "20px",
-					boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-					width: "100%",
-					maxWidth: "480px",
-					overflow: "hidden",
-				}}
-			>
+			<div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[480px] overflow-hidden animate-scale-in">
 				{/* Header */}
-				<div
-					style={{
-						background: "linear-gradient(135deg, #8b5cf6, #7c3aed, #6366f1)",
-						padding: "20px 24px",
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "space-between",
-					}}
-				>
-					<div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-						<div
-							style={{
-								width: "44px",
-								height: "44px",
-								borderRadius: "12px",
-								backgroundColor: "rgba(255,255,255,0.2)",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Download size={22} color="white" />
+				<div className="bg-gradient-to-br from-violet-500 via-violet-600 to-indigo-600 px-6 py-5 flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						<div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+							<Download size={22} className="text-white" />
 						</div>
 						<div>
-							<h2
-								style={{
-									fontSize: "18px",
-									fontWeight: 700,
-									color: "white",
-									margin: 0,
-								}}
-							>
+							<h2 className="text-lg font-bold text-white m-0">
 								Export Canvas
 							</h2>
-							<p
-								style={{
-									fontSize: "13px",
-									color: "rgba(255,255,255,0.7)",
-									margin: 0,
-								}}
-							>
+							<p className="text-[13px] text-white/70 m-0">
 								{elements.length} elements
 							</p>
 						</div>
@@ -290,86 +217,46 @@ export function ExportModal({
 					<button
 						type="button"
 						onClick={onClose}
-						style={{
-							padding: "10px",
-							borderRadius: "10px",
-							border: "none",
-							backgroundColor: "rgba(255,255,255,0.1)",
-							cursor: "pointer",
-						}}
+						className="p-2.5 rounded-xl border-none bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
 					>
-						<X size={20} color="white" />
+						<X size={20} className="text-white" />
 					</button>
 				</div>
 
 				{/* Content */}
-				<div style={{ padding: "24px" }}>
+				<div className="p-6">
 					{/* Format Selection */}
-					<div style={{ marginBottom: "20px" }}>
-						<p
-							style={{
-								fontSize: "12px",
-								fontWeight: 600,
-								color: "#6b7280",
-								textTransform: "uppercase",
-								letterSpacing: "0.5px",
-								marginBottom: "12px",
-								display: "block",
-							}}
-						>
+					<div className="mb-5">
+						<p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
 							Export Format
 						</p>
-						<div style={{ display: "flex", gap: "12px" }}>
+						<div className="flex gap-3">
 							{EXPORT_OPTIONS.map((option) => (
 								<button
 									type="button"
 									key={option.id}
 									onClick={() => setSelectedFormat(option.id)}
-									style={{
-										flex: 1,
-										padding: "16px 12px",
-										borderRadius: "12px",
-										border: `2px solid ${selectedFormat === option.id ? option.color : "#e5e7eb"}`,
-										backgroundColor:
-											selectedFormat === option.id
-												? `${option.color}10`
-												: "white",
-										cursor: "pointer",
-										transition: "all 0.15s",
-										display: "flex",
-										flexDirection: "column",
-										alignItems: "center",
-										gap: "8px",
-									}}
+									className={`relative flex-1 py-4 px-3 rounded-xl cursor-pointer transition-all flex flex-col items-center gap-2 border-none ${
+										selectedFormat === option.id
+											? "bg-violet-50 ring-2 ring-violet-500 shadow-sm"
+											: "bg-white ring-1 ring-gray-200 hover:ring-gray-300"
+									}`}
 								>
-									<div style={{ color: option.color }}>{option.icon}</div>
 									<span
-										style={{
-											fontSize: "13px",
-											fontWeight: 600,
-											color: "#374151",
-										}}
+										className={
+											selectedFormat === option.id
+												? "text-violet-500"
+												: "text-gray-400"
+										}
 									>
+										{option.icon}
+									</span>
+									<span className="text-[13px] font-semibold text-gray-700">
 										{option.label}
 									</span>
-									{selectedFormat === option.id && (
-										<div
-											style={{
-												position: "absolute",
-												top: "-6px",
-												right: "-6px",
-												width: "20px",
-												height: "20px",
-												borderRadius: "50%",
-												backgroundColor: option.color,
-												display: "flex",
-												alignItems: "center",
-												justifyContent: "center",
-											}}
-										>
-											<Check size={12} color="white" />
-										</div>
-									)}
+									<span className="text-[11px] text-gray-400">
+										{option.description}
+									</span>
 								</button>
 							))}
 						</div>
@@ -377,37 +264,21 @@ export function ExportModal({
 
 					{/* PNG Options */}
 					{selectedFormat === "png" && (
-						<div style={{ marginBottom: "20px" }}>
-							<p
-								style={{
-									fontSize: "12px",
-									fontWeight: 600,
-									color: "#6b7280",
-									textTransform: "uppercase",
-									letterSpacing: "0.5px",
-									marginBottom: "12px",
-									display: "block",
-								}}
-							>
+						<div className="mb-5">
+							<p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
 								Scale (Resolution)
 							</p>
-							<div style={{ display: "flex", gap: "8px" }}>
+							<div className="flex gap-2">
 								{[1, 2, 3, 4].map((s) => (
 									<button
 										type="button"
 										key={s}
 										onClick={() => setScale(s)}
-										style={{
-											flex: 1,
-											padding: "10px",
-											borderRadius: "8px",
-											border: `2px solid ${scale === s ? "#8b5cf6" : "#e5e7eb"}`,
-											backgroundColor: scale === s ? "#8b5cf610" : "white",
-											cursor: "pointer",
-											fontSize: "13px",
-											fontWeight: 600,
-											color: scale === s ? "#8b5cf6" : "#64748b",
-										}}
+										className={`flex-1 py-2.5 rounded-lg cursor-pointer text-[13px] font-semibold transition-all border-none ${
+											scale === s
+												? "bg-violet-50 ring-2 ring-violet-500 text-violet-600"
+												: "bg-white ring-1 ring-gray-200 text-gray-500 hover:ring-gray-300"
+										}`}
 									>
 										{s}x
 									</button>
@@ -418,35 +289,15 @@ export function ExportModal({
 
 					{/* Background Option */}
 					{(selectedFormat === "png" || selectedFormat === "svg") && (
-						<div style={{ marginBottom: "20px" }}>
-							<label
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: "12px",
-									cursor: "pointer",
-									padding: "12px",
-									borderRadius: "10px",
-									backgroundColor: "#f8fafc",
-								}}
-							>
+						<div className="mb-5">
+							<label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl bg-gray-50">
 								<input
 									type="checkbox"
 									checked={includeBackground}
 									onChange={(e) => setIncludeBackground(e.target.checked)}
-									style={{
-										width: "18px",
-										height: "18px",
-										accentColor: "#8b5cf6",
-									}}
+									className="w-[18px] h-[18px] accent-violet-500"
 								/>
-								<span
-									style={{
-										fontSize: "14px",
-										fontWeight: 500,
-										color: "#374151",
-									}}
-								>
+								<span className="text-sm font-medium text-gray-700">
 									Include background
 								</span>
 							</label>
@@ -458,30 +309,13 @@ export function ExportModal({
 						type="button"
 						onClick={handleExport}
 						disabled={isExporting}
-						style={{
-							width: "100%",
-							padding: "14px",
-							borderRadius: "12px",
-							border: "none",
-							background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-							color: "white",
-							fontSize: "15px",
-							fontWeight: 700,
-							cursor: isExporting ? "not-allowed" : "pointer",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							gap: "8px",
-							boxShadow: "0 8px 24px rgba(139, 92, 246, 0.3)",
-							opacity: isExporting ? 0.7 : 1,
-						}}
+						className={`w-full py-3.5 rounded-xl border-none bg-gradient-to-r from-violet-500 to-violet-600 text-white text-[15px] font-bold cursor-pointer flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(139,92,246,0.3)] transition-opacity ${
+							isExporting ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"
+						}`}
 					>
 						{isExporting ? (
 							<>
-								<Loader2
-									size={18}
-									style={{ animation: "spin 1s linear infinite" }}
-								/>
+								<Loader2 size={18} className="animate-spin" />
 								Exporting...
 							</>
 						) : (
@@ -493,13 +327,6 @@ export function ExportModal({
 					</button>
 				</div>
 			</div>
-
-			<style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
 		</div>
 	);
 }

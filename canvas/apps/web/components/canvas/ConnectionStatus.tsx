@@ -18,7 +18,6 @@ export function ConnectionStatus({
 	const [showTooltip, setShowTooltip] = useState(false);
 	const [isReconnecting, setIsReconnecting] = useState(false);
 
-	// Auto-reconnect logic
 	useEffect(() => {
 		if (!isConnected && !isReconnecting) {
 			setIsReconnecting(true);
@@ -30,180 +29,81 @@ export function ConnectionStatus({
 		}
 	}, [isConnected, isReconnecting, onReconnect]);
 
-	const getStatusColor = () => {
-		if (!isConnected) return "#ef4444"; // red
-		if (!isSynced) return "#f59e0b"; // amber
-		return "#22c55e"; // green
-	};
+	const dotColor = !isConnected
+		? "bg-red-500"
+		: !isSynced
+			? "bg-amber-500"
+			: "bg-green-500";
 
-	const getStatusText = () => {
-		if (!isConnected) return "Disconnected";
-		if (!isSynced) return "Syncing...";
-		return "Synced";
-	};
-
-	const containerStyle: React.CSSProperties = {
-		position: "fixed",
-		bottom: "16px",
-		left: "50%",
-		transform: "translateX(-50%)",
-		zIndex: 40,
-		display: "flex",
-		alignItems: "center",
-		gap: "8px",
-		padding: "8px 16px",
-		backgroundColor: "rgba(255, 255, 255, 0.95)",
-		backdropFilter: "blur(8px)",
-		borderRadius: "9999px",
-		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.1)",
-		border: "1px solid rgba(0, 0, 0, 0.05)",
-		cursor: "pointer",
-		transition: "all 0.2s ease",
-	};
-
-	const dotStyle: React.CSSProperties = {
-		width: "8px",
-		height: "8px",
-		borderRadius: "50%",
-		backgroundColor: getStatusColor(),
-		animation: !isConnected || !isSynced ? "pulse 2s infinite" : "none",
-	};
-
-	const textStyle: React.CSSProperties = {
-		fontSize: "12px",
-		fontWeight: 500,
-		color: "#374151",
-	};
-
-	const collaboratorStyle: React.CSSProperties = {
-		display: "flex",
-		alignItems: "center",
-		gap: "4px",
-		paddingLeft: "8px",
-		borderLeft: "1px solid #e5e7eb",
-		marginLeft: "4px",
-	};
-
-	const avatarStackStyle: React.CSSProperties = {
-		display: "flex",
-		marginLeft: "-4px",
-	};
-
-	const tooltipStyle: React.CSSProperties = {
-		position: "absolute",
-		bottom: "100%",
-		left: "50%",
-		transform: "translateX(-50%)",
-		marginBottom: "8px",
-		padding: "8px 12px",
-		backgroundColor: "#1f2937",
-		color: "white",
-		borderRadius: "8px",
-		fontSize: "12px",
-		whiteSpace: "nowrap",
-		opacity: showTooltip ? 1 : 0,
-		visibility: showTooltip ? "visible" : "hidden",
-		transition: "opacity 0.2s, visibility 0.2s",
-	};
-
-	const reconnectButtonStyle: React.CSSProperties = {
-		marginLeft: "8px",
-		padding: "4px 8px",
-		fontSize: "11px",
-		fontWeight: 500,
-		color: "#6965db",
-		backgroundColor: "#f0f0ff",
-		border: "none",
-		borderRadius: "4px",
-		cursor: "pointer",
-	};
+	const statusText = !isConnected
+		? "Disconnected"
+		: !isSynced
+			? "Syncing..."
+			: "Synced";
 
 	return (
-		// biome-ignore lint/a11y/useSemanticElements: Cannot use <button> here as it contains another <button> (invalid HTML)
 		<div
-			style={{
-				...containerStyle,
-				background: "transparent",
-				border: "none",
-				padding: 0,
-				font: "inherit",
-				textAlign: "inherit",
-			}}
+			className="fixed bottom-[72px] left-1/2 -translate-x-1/2 z-40"
 			onMouseEnter={() => setShowTooltip(true)}
 			onMouseLeave={() => setShowTooltip(false)}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					setShowTooltip(!showTooltip);
-				}
-			}}
-			tabIndex={0}
-			role="button"
+			role="status"
 		>
-			{/* Pulse animation */}
-			<style>
-				{`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-        `}
-			</style>
+			<div className="glass-card rounded-full px-4 py-2 flex items-center gap-2 cursor-default">
+				{/* Status dot */}
+				<div
+					className={`w-2 h-2 rounded-full ${dotColor} ${
+						!isConnected || !isSynced ? "animate-pulse-dot" : ""
+					}`}
+				/>
 
-			{/* Status indicator */}
-			<div style={dotStyle} />
-			<span style={textStyle}>{getStatusText()}</span>
+				{/* Status text */}
+				<span className="text-xs font-medium text-gray-600">{statusText}</span>
 
-			{/* Collaborator count */}
-			{isConnected && collaboratorCount > 0 && (
-				<div style={collaboratorStyle}>
-					<div style={avatarStackStyle}>
-						{Array.from({ length: Math.min(collaboratorCount, 3) }).map(
-							(_, i) => (
-								<div
-									key={`avatar-${String.fromCharCode(65 + i)}`}
-									style={{
-										width: "20px",
-										height: "20px",
-										borderRadius: "50%",
-										backgroundColor: `hsl(${(i * 60 + 200) % 360}, 70%, 60%)`,
-										border: "2px solid white",
-										marginLeft: i > 0 ? "-8px" : "0",
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-										fontSize: "10px",
-										fontWeight: 600,
-										color: "white",
-									}}
-								>
-									{String.fromCharCode(65 + i)}
-								</div>
-							),
-						)}
+				{/* Collaborator count */}
+				{isConnected && collaboratorCount > 0 && (
+					<div className="flex items-center gap-1.5 pl-2 border-l border-gray-200 ml-1">
+						<div className="flex -space-x-1.5">
+							{Array.from({ length: Math.min(collaboratorCount, 3) }).map(
+								(_, i) => (
+									<div
+										key={`avatar-${String.fromCharCode(65 + i)}`}
+										className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold text-white"
+										style={{
+											backgroundColor: `hsl(${(i * 60 + 200) % 360}, 70%, 60%)`,
+										}}
+									>
+										{String.fromCharCode(65 + i)}
+									</div>
+								),
+							)}
+						</div>
+						<span className="text-[11px] text-gray-400">
+							{collaboratorCount} online
+						</span>
 					</div>
-					<span style={{ fontSize: "11px", color: "#6b7280" }}>
-						{collaboratorCount} online
-					</span>
-				</div>
-			)}
+				)}
 
-			{/* Reconnect button when disconnected */}
-			{!isConnected && (
-				<button
-					type="button"
-					style={reconnectButtonStyle}
-					onClick={(e) => {
-						e.stopPropagation();
-						onReconnect?.();
-					}}
-				>
-					{isReconnecting ? "Reconnecting..." : "Reconnect"}
-				</button>
-			)}
+				{/* Reconnect button */}
+				{!isConnected && (
+					<button
+						type="button"
+						className="ml-2 px-2 py-1 text-[11px] font-medium text-violet-600 bg-violet-50 rounded cursor-pointer border-none hover:bg-violet-100 transition-colors"
+						onClick={(e) => {
+							e.stopPropagation();
+							onReconnect?.();
+						}}
+					>
+						{isReconnecting ? "Reconnecting..." : "Reconnect"}
+					</button>
+				)}
+			</div>
 
 			{/* Tooltip */}
-			<div style={tooltipStyle}>
+			<div
+				className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white rounded-lg text-xs whitespace-nowrap transition-all duration-200 ${
+					showTooltip ? "opacity-100 visible" : "opacity-0 invisible"
+				}`}
+			>
 				{isConnected
 					? `Connected • ${collaboratorCount + 1} ${collaboratorCount === 0 ? "person" : "people"} in this room`
 					: "Connection lost. Click to reconnect."}

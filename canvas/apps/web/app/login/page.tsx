@@ -1,6 +1,10 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
+import Antigravity from "../../components/Antigravity";
 import { supabase } from "../../lib/supabase.client";
 
 export default function LoginPage() {
@@ -11,7 +15,6 @@ export default function LoginPage() {
 		setIsLoading(true);
 		setError(null);
 
-		// Get 'next' param to redirect after auth
 		const urlParams = new URLSearchParams(window.location.search);
 		const next = urlParams.get("next") ?? "/";
 
@@ -29,95 +32,59 @@ export default function LoginPage() {
 	};
 
 	return (
-		<div
-			style={{
-				minHeight: "100vh",
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-				padding: "20px",
-			}}
-		>
-			<div
-				style={{
-					background: "rgba(255, 255, 255, 0.95)",
-					backdropFilter: "blur(10px)",
-					borderRadius: "24px",
-					padding: "48px",
-					maxWidth: "420px",
-					width: "100%",
-					boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-					textAlign: "center",
-				}}
+		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-5 relative overflow-hidden">
+			{/* Antigravity particle background */}
+			<Antigravity
+				count={250}
+				magnetRadius={6}
+				ringRadius={7}
+				waveSpeed={0.4}
+				waveAmplitude={1}
+				particleSize={1.5}
+				lerpSpeed={0.05}
+				color="#c4b5fd"
+				autoAnimate
+				particleVariance={1}
+				rotationSpeed={0}
+				depthFactor={1}
+				pulseSpeed={3}
+				particleShape="capsule"
+				fieldStrength={10}
+				className="absolute inset-0 z-0 opacity-60"
+			/>
+
+			{/* Back to home */}
+			<Link
+				href="/"
+				className="absolute top-6 left-6 z-10 flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
 			>
-				{/* Logo/Brand */}
-				<div
-					style={{
-						width: "72px",
-						height: "72px",
-						background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-						borderRadius: "16px",
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						margin: "0 auto 24px",
-						boxShadow: "0 10px 40px -10px rgba(102, 126, 234, 0.5)",
-					}}
-				>
-					<svg
-						width="36"
-						height="36"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="white"
-						strokeWidth="2"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						aria-hidden="true"
-					>
-						<rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-						<line x1="3" y1="9" x2="21" y2="9" />
-						<line x1="9" y1="21" x2="9" y2="9" />
-					</svg>
+				<ArrowLeft size={16} />
+				Back to home
+			</Link>
+
+			{/* Card */}
+			<div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl p-10 sm:p-12 max-w-[420px] w-full shadow-2xl shadow-black/20 animate-scale-in">
+				{/* Logo */}
+				<div className="flex justify-center mb-8">
+					<Image
+						src="/logo.jpg"
+						alt="LekhaFlow"
+						width={64}
+						height={64}
+						className="h-16 w-auto rounded-2xl shadow-lg shadow-violet-500/30"
+					/>
 				</div>
 
-				<h1
-					style={{
-						fontSize: "28px",
-						fontWeight: 700,
-						color: "#1a1a2e",
-						marginBottom: "8px",
-						letterSpacing: "-0.5px",
-					}}
-				>
-					Digital Canvas
+				<h1 className="text-2xl font-bold text-gray-900 text-center tracking-tight font-heading">
+					Welcome to LekhaFlow
 				</h1>
-
-				<p
-					style={{
-						fontSize: "15px",
-						color: "#64748b",
-						marginBottom: "32px",
-						lineHeight: 1.6,
-					}}
-				>
+				<p className="text-sm text-gray-500 text-center mt-2 mb-8 leading-relaxed">
 					Collaborate in real-time with your team
 				</p>
 
 				{/* Error Message */}
 				{error && (
-					<div
-						style={{
-							background: "#fef2f2",
-							border: "1px solid #fecaca",
-							borderRadius: "12px",
-							padding: "12px 16px",
-							marginBottom: "24px",
-							color: "#dc2626",
-							fontSize: "14px",
-						}}
-					>
+					<div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-600 text-sm text-left leading-relaxed animate-slide-up">
 						{error}
 					</div>
 				)}
@@ -127,58 +94,10 @@ export default function LoginPage() {
 					type="button"
 					onClick={handleGoogleSignIn}
 					disabled={isLoading}
-					style={{
-						width: "100%",
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						gap: "12px",
-						padding: "14px 24px",
-						fontSize: "16px",
-						fontWeight: 500,
-						color: "#1f2937",
-						backgroundColor: "#ffffff",
-						border: "2px solid #e5e7eb",
-						borderRadius: "12px",
-						cursor: isLoading ? "not-allowed" : "pointer",
-						opacity: isLoading ? 0.7 : 1,
-						transition: "all 0.2s ease",
-						boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-					}}
-					onMouseOver={(e) => {
-						if (!isLoading) {
-							e.currentTarget.style.borderColor = "#667eea";
-							e.currentTarget.style.boxShadow =
-								"0 4px 12px rgba(102, 126, 234, 0.15)";
-						}
-					}}
-					onMouseOut={(e) => {
-						e.currentTarget.style.borderColor = "#e5e7eb";
-						e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.1)";
-					}}
-					onFocus={(e) => {
-						if (!isLoading) {
-							e.currentTarget.style.borderColor = "#667eea";
-							e.currentTarget.style.boxShadow =
-								"0 4px 12px rgba(102, 126, 234, 0.15)";
-						}
-					}}
-					onBlur={(e) => {
-						e.currentTarget.style.borderColor = "#e5e7eb";
-						e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.1)";
-					}}
+					className="w-full flex items-center justify-center gap-3 px-6 py-3.5 text-base font-medium text-gray-700 bg-white border-2 border-gray-200 rounded-xl cursor-pointer transition-all duration-200 shadow-sm hover:border-violet-400 hover:shadow-md hover:shadow-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
 				>
 					{isLoading ? (
-						<div
-							style={{
-								width: "20px",
-								height: "20px",
-								border: "2px solid #e5e7eb",
-								borderTopColor: "#667eea",
-								borderRadius: "50%",
-								animation: "spin 1s linear infinite",
-							}}
-						/>
+						<div className="w-5 h-5 border-2 border-gray-200 border-t-violet-600 rounded-full animate-spin" />
 					) : (
 						<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
 							<path
@@ -202,22 +121,10 @@ export default function LoginPage() {
 					{isLoading ? "Signing in..." : "Continue with Google"}
 				</button>
 
-				<p
-					style={{
-						marginTop: "24px",
-						fontSize: "13px",
-						color: "#94a3b8",
-					}}
-				>
+				<p className="mt-6 text-xs text-gray-400 text-center">
 					By continuing, you agree to our Terms of Service
 				</p>
 			</div>
-
-			<style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
 		</div>
 	);
 }
