@@ -14,7 +14,6 @@ export const SigninSchema = z.object({
 export const CreateCanvasSchema = z.object({
 	name: z.string().min(1).max(50),
 	isPublic: z.boolean().optional().default(false),
-	userId: z.string(),
 });
 
 export type SignupType = z.infer<typeof SignupSchema>;

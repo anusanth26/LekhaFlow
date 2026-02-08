@@ -1,7 +1,10 @@
 import type { CreateCanvasType } from "@repo/common";
 import { HttpError } from "@repo/http-core";
-import { supabase, type Tables } from "@repo/supabase";
+import type { Tables } from "@repo/supabase";
 import { StatusCodes } from "http-status-codes";
+import { createServiceClient } from "../supabase.server";
+
+const serviceClient = createServiceClient();
 
 const generateSlug = (name: string): string => {
 	const base = name
@@ -13,12 +16,12 @@ const generateSlug = (name: string): string => {
 };
 
 export const createCanvasService = async (
-	params: CreateCanvasType,
+	params: CreateCanvasType & { userId: string },
 ): Promise<Tables<"canvases">> => {
 	const { name, isPublic, userId } = params;
 
 	const slug = generateSlug(name);
-	const { data, error } = await supabase
+	const { data, error } = await createServiceClient()
 		.from("canvases")
 		.insert({
 			name,
@@ -40,7 +43,7 @@ export const updateCanvasService = async (
 	canvasId: string,
 	data: string,
 ): Promise<void> => {
-	const { error } = await supabase
+	const { error } = await serviceClient
 		.from("canvases")
 		.update({ data })
 		.eq("id", canvasId);
