@@ -4,6 +4,9 @@ import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import {
 	createCanvasService,
+	deleteCanvasService,
+	getCanvasesService,
+	getCanvasService,
 	updateCanvasService,
 } from "../services/canvas.js";
 
@@ -58,4 +61,48 @@ export const updateCanvas = async (req: Request, res: Response) => {
 	await updateCanvasService(roomId, data);
 
 	return JSONResponse(res, StatusCodes.OK, "Canvas updated successfully");
+};
+
+export const getCanvases = async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+
+	const userId = req.user.id;
+	const canvases = await getCanvasesService(userId);
+
+	return JSONResponse(res, StatusCodes.OK, "Canvases retrieved successfully", {
+		canvases,
+	});
+};
+
+export const getCanvas = async (req: Request, res: Response) => {
+	const roomId = req.params.roomId as string;
+	if (!roomId) {
+		throw new HttpError("Room ID is required", StatusCodes.BAD_REQUEST);
+	}
+
+	const canvas = await getCanvasService(roomId);
+	if (!canvas) {
+		throw new HttpError("Canvas not found", StatusCodes.NOT_FOUND);
+	}
+
+	return JSONResponse(res, StatusCodes.OK, "Canvas retrieved successfully", {
+		canvas,
+	});
+};
+
+export const deleteCanvas = async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+
+	const roomId = req.params.roomId as string;
+	if (!roomId) {
+		throw new HttpError("Room ID is required", StatusCodes.BAD_REQUEST);
+	}
+
+	await deleteCanvasService(roomId, req.user.id);
+
+	return JSONResponse(res, StatusCodes.OK, "Canvas deleted successfully");
 };
