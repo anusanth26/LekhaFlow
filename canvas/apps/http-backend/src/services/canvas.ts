@@ -39,20 +39,6 @@ export const createCanvasService = async (
 	return data;
 };
 
-export const updateCanvasService = async (
-	canvasId: string,
-	data: string,
-): Promise<void> => {
-	const { error } = await serviceClient
-		.from("canvases")
-		.update({ data })
-		.eq("id", canvasId);
-
-	if (error) {
-		throw new HttpError(error.message, StatusCodes.INTERNAL_SERVER_ERROR);
-	}
-};
-
 export const getCanvasesService = async (
 	userId: string,
 ): Promise<Tables<"canvases">[]> => {
@@ -116,13 +102,32 @@ export const getCanvasService = async (
 	return data;
 };
 
+export const updateCanvasService = async (
+	canvasId: string,
+	update: { name?: string; data?: string },
+	userId: string,
+): Promise<void> => {
+	const updateFields: Record<string, string | undefined> = {};
+	if (update.name !== undefined) updateFields.name = update.name;
+	if (update.data !== undefined) updateFields.data = update.data;
+
+	const { error } = await serviceClient
+		.from("canvases")
+		.update(updateFields)
+		.eq("id", canvasId)
+		.eq("owner_id", userId);
+	if (error) {
+		throw new HttpError(error.message, StatusCodes.INTERNAL_SERVER_ERROR);
+	}
+};
+
 export const deleteCanvasService = async (
 	canvasId: string,
 	userId: string,
 ): Promise<void> => {
 	const { error } = await serviceClient
 		.from("canvases")
-		.update({ is_deleted: true, deleted_at: new Date().toISOString() })
+		.update({ is_deleted: true })
 		.eq("id", canvasId)
 		.eq("owner_id", userId);
 
