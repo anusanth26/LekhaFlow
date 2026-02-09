@@ -47,6 +47,7 @@ export interface BoundingBox {
 export type ElementType =
 	| "rectangle" // Basic rectangle shape
 	| "ellipse" // Circle/ellipse shape
+	| "diamond" // Diamond shape
 	| "line" // Straight line with optional arrows
 	| "arrow" // Arrow (line with arrowhead)
 	| "freedraw" // Freehand drawing path
@@ -180,6 +181,14 @@ export interface EllipseElement extends ExcalidrawElementBase {
 }
 
 /**
+ * Diamond element
+ * Diamond/rhombus shape
+ */
+export interface DiamondElement extends ExcalidrawElementBase {
+	type: "diamond";
+}
+
+/**
  * Line element
  * Straight or multi-point line with optional arrowheads
  */
@@ -262,6 +271,7 @@ export interface TextElement extends ExcalidrawElementBase {
 export type CanvasElement =
 	| RectangleElement
 	| EllipseElement
+	| DiamondElement
 	| LineElement
 	| ArrowElement
 	| FreedrawElement
@@ -278,6 +288,7 @@ export type Tool =
 	| "selection" // Select and move elements
 	| "rectangle" // Draw rectangles
 	| "ellipse" // Draw ellipses
+	| "diamond" // Draw diamonds
 	| "line" // Draw lines
 	| "arrow" // Draw arrows
 	| "freedraw" // Freehand drawing

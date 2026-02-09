@@ -1,0 +1,62 @@
+diff --git a/canvas/apps/web/components/Canvas.tsx b/canvas/apps/web/components/Canvas.tsx
+index fe254d1..complete 100644
+--- a/canvas/apps/web/components/Canvas.tsx
++++ b/canvas/apps/web/components/Canvas.tsx
+@@ -57,18 +57,29 @@ import type Konva from "konva";
+ import type { KonvaEventObject } from "konva/lib/Node";
+ import { useCallback, useEffect, useRef, useState } from "react";
+ 
+-import { Ellipse, Layer, Line, Rect, Stage, Text } from "react-konva";
++import { Ellipse, Layer, Line, Path, Rect, Stage, Text } from "react-konva";
+ import { useYjsSync } from "../hooks/useYjsSync";
+ import {
+ 	createArrow,
++	createDiamond,
+ 	createEllipse,
+ 	createFreedraw,
+ 	createLine,
+ 	createRectangle,
++	createShape,
+ 	createText,
+ 	getElementAtPoint,
++	type ShapeModifiers,
+ } from "../lib/element-utils";
++import {
++	getStrokeOutline,
++	optimizeStroke,
++	outlineToFlatArray,
++	outlineToSvgPath,
++	type StrokeOptions,
++	type StrokePoint,
++} from "../lib/stroke-utils";
+ import {
+ 	useCanvasStore,
+ 	useCollaboratorsArray,
+@@ -103,12 +114,15 @@ interface CanvasProps {
+  *
+  * @param element - The element to render
+  * @param isSelected - Whether the element is selected
++ * @param isDraggable - Whether the element can be dragged
++ * @param isPreview - Whether this is a preview (dashed rendering)
+  * @param onDragEnd - Callback when drag ends
+  */
+ function renderElement(
+ 	element: CanvasElement,
+ 	_isSelected: boolean,
+ 	isDraggable: boolean,
++	isPreview: boolean,
+ 	onDragEnd: (id: string, x: number, y: number) => void,
+ ) {
+ 	const commonProps = {
+@@ -126,8 +140,9 @@ function renderElement(
+ 	const strokeProps = {
+ 		stroke: element.strokeColor,
+ 		strokeWidth: element.strokeWidth,
+-		dash:
+-			element.strokeStyle === "dashed"
++		dash: is Preview
++			? [10, 5] // Dashed preview
++			: element.strokeStyle === "dashed"
+ 				? [10, 5]
+ 				: element.strokeStyle === "dotted"
+ 					? [2, 2]
