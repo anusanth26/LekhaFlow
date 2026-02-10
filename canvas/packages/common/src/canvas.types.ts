@@ -291,7 +291,8 @@ export type Tool =
 	| "diamond" // Draw diamonds
 	| "line" // Draw lines
 	| "arrow" // Draw arrows
-	| "freedraw" // Freehand drawing
+	| "freedraw" // Freehand drawing (persistent)
+	| "laser" // Laser pointer (temporary)
 	| "text" // Add text
 	| "eraser" // Erase elements
 	| "hand"; // Pan canvas
