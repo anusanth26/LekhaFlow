@@ -57,12 +57,24 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Ellipse, Layer, Line, Path, Rect, Stage, Text } from "react-konva";
+import {
+	Arrow,
+	Circle,
+	Ellipse,
+	Group,
+	Layer,
+	Line,
+	Path,
+	Rect,
+	Stage,
+	Text,
+} from "react-konva";
 
 import { useYjsSync } from "../hooks/useYjsSync";
 import {
 	createArrow,
 	createFreedraw,
+	createLine,
 	createShape,
 	createText,
 	getElementAtPoint,
@@ -109,10 +121,11 @@ interface CanvasProps {
  */
 function renderElement(
 	element: CanvasElement,
-	_isSelected: boolean,
+	isSelected: boolean,
 	isDraggable: boolean,
 	isPreview: boolean,
 	onDragEnd: (id: string, x: number, y: number) => void,
+	onJointDrag?: (id: string, pointIndex: number, x: number, y: number) => void,
 ) {
 	const commonProps = {
 		id: element.id,
@@ -125,6 +138,32 @@ function renderElement(
 			onDragEnd(element.id, e.target.x(), e.target.y());
 		},
 	};
+
+	// Selection glow effect
+	const selectionProps = isSelected
+		? {
+				shadowColor: "#3b82f6", // Blue glow
+				shadowBlur: 15,
+				shadowOpacity: 0.8,
+				shadowEnabled: true,
+			}
+		: {
+				shadowEnabled: false,
+			};
+
+	// Enhanced glow for lines/arrows (thicker shadow since lines are thin)
+	const lineSelectionProps = isSelected
+		? {
+				shadowColor: "#3b82f6", // Blue glow
+				shadowBlur: 25,
+				shadowOpacity: 1,
+				shadowOffsetX: 0,
+				shadowOffsetY: 0,
+				shadowEnabled: true,
+			}
+		: {
+				shadowEnabled: false,
+			};
 
 	const strokeProps = {
 		stroke: element.strokeColor,
@@ -145,6 +184,7 @@ function renderElement(
 					key={element.id}
 					{...commonProps}
 					{...strokeProps}
+					{...selectionProps}
 					width={element.width}
 					height={element.height}
 					fill={
@@ -162,6 +202,7 @@ function renderElement(
 					key={element.id}
 					{...commonProps}
 					{...strokeProps}
+					{...selectionProps}
 					radiusX={Math.abs(element.width) / 2}
 					radiusY={Math.abs(element.height) / 2}
 					offsetX={-element.width / 2}
@@ -174,26 +215,126 @@ function renderElement(
 				/>
 			);
 
-		case "line":
-		case "arrow": {
-			const lineElement = element as LineElement | ArrowElement;
+		case "line": {
+			const lineElement = element as LineElement;
 			const points = lineElement.points.flatMap((p) => [p.x, p.y]);
+			const hasJoints = lineElement.points.length >= 3;
+
+			// If selected and has 3+ points, render with draggable joint handles
+			if (isSelected && hasJoints && onJointDrag && !isPreview) {
+				return (
+					<Group key={element.id}>
+						<Line
+							{...commonProps}
+							{...strokeProps}
+							{...lineSelectionProps}
+							points={points}
+							tension={0}
+							lineCap="round"
+							lineJoin="round"
+							hitStrokeWidth={Math.max(element.strokeWidth, 10)}
+						/>
+						{/* Joint handles for each point */}
+						{lineElement.points.map((point, index) => (
+							<Circle
+								key={`joint-${element.id}-${index}`}
+								x={element.x + point.x}
+								y={element.y + point.y}
+								radius={8}
+								fill="#3b82f6"
+								stroke="#ffffff"
+								strokeWidth={2}
+								draggable={true}
+								onDragMove={(e: KonvaEventObject<DragEvent>) => {
+									// Update the point position relative to element origin
+									const newX = e.target.x() - element.x;
+									const newY = e.target.y() - element.y;
+									onJointDrag(element.id, index, newX, newY);
+								}}
+								style={{ cursor: "move" }}
+							/>
+						))}
+					</Group>
+				);
+			}
+
+			// Default: simple line without joint handles
 			return (
 				<Line
 					key={element.id}
 					{...commonProps}
 					{...strokeProps}
+					{...lineSelectionProps}
 					points={points}
 					tension={0}
 					lineCap="round"
 					lineJoin="round"
-					// Expand hit region for thin strokes (Story 2.4)
 					hitStrokeWidth={Math.max(element.strokeWidth, 10)}
-					// Arrow heads for arrow type
-					{...(element.type === "arrow" && {
-						pointerLength: 10,
-						pointerWidth: 10,
-					})}
+				/>
+			);
+		}
+
+		case "arrow": {
+			const arrowElement = element as ArrowElement;
+			const points = arrowElement.points.flatMap((p) => [p.x, p.y]);
+			const hasJoints = arrowElement.points.length >= 3;
+
+			// If selected and has 3+ points, render with draggable joint handles
+			if (isSelected && hasJoints && onJointDrag && !isPreview) {
+				return (
+					<Group key={element.id}>
+						<Arrow
+							{...commonProps}
+							{...strokeProps}
+							{...lineSelectionProps}
+							points={points}
+							tension={0}
+							lineCap="round"
+							lineJoin="round"
+							hitStrokeWidth={Math.max(element.strokeWidth, 10)}
+							pointerLength={15}
+							pointerWidth={12}
+							fill={element.strokeColor}
+						/>
+						{/* Joint handles for each point */}
+						{arrowElement.points.map((point, index) => (
+							<Circle
+								key={`joint-${element.id}-${index}`}
+								x={element.x + point.x}
+								y={element.y + point.y}
+								radius={8}
+								fill="#3b82f6"
+								stroke="#ffffff"
+								strokeWidth={2}
+								draggable={true}
+								onDragMove={(e: KonvaEventObject<DragEvent>) => {
+									// Update the point position relative to element origin
+									const newX = e.target.x() - element.x;
+									const newY = e.target.y() - element.y;
+									onJointDrag(element.id, index, newX, newY);
+								}}
+								style={{ cursor: "move" }}
+							/>
+						))}
+					</Group>
+				);
+			}
+
+			// Default: simple arrow without joint handles
+			return (
+				<Arrow
+					key={element.id}
+					{...commonProps}
+					{...strokeProps}
+					{...lineSelectionProps}
+					points={points}
+					tension={0}
+					lineCap="round"
+					lineJoin="round"
+					hitStrokeWidth={Math.max(element.strokeWidth, 10)}
+					pointerLength={15}
+					pointerWidth={12}
+					fill={element.strokeColor}
 				/>
 			);
 		}
@@ -217,6 +358,7 @@ function renderElement(
 					opacity={element.opacity / 100}
 					rotation={element.angle}
 					draggable={isDraggable}
+					{...selectionProps}
 					onDragEnd={(e: KonvaEventObject<DragEvent>) => {
 						onDragEnd(element.id, e.target.x(), e.target.y());
 					}}
@@ -244,6 +386,7 @@ function renderElement(
 					key={element.id}
 					{...commonProps}
 					{...strokeProps}
+					{...selectionProps}
 					points={diamondPoints}
 					closed={true}
 					// Expand hit region for thin strokes (Story 2.4)
@@ -263,6 +406,7 @@ function renderElement(
 				<Text
 					key={element.id}
 					{...commonProps}
+					{...selectionProps}
 					text={textElement.text}
 					fontSize={textElement.fontSize}
 					fontFamily="Arial"
@@ -362,6 +506,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		x: number;
 		y: number;
 		initialText?: string;
+		initialWidth?: number;
+		initialHeight?: number;
 	} | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const textareaJustOpenedRef = useRef<boolean>(false);
@@ -375,6 +521,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 	// Pressure tracking for freedraw
 	const lastPointTimeRef = useRef<number>(Date.now());
+
+	// Ref to track current selection (fixes stale closure in color update effects)
+	const selectedElementIdsRef = useRef<Set<string>>(selectedElementIds);
 
 	// Container dimensions
 	const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -426,52 +575,54 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	// Update selection awareness when selection changes
 	useEffect(() => {
 		updateSelection(Array.from(selectedElementIds));
+		// Keep ref in sync with state to avoid stale closures
+		selectedElementIdsRef.current = selectedElementIds;
 	}, [selectedElementIds, updateSelection]);
 
 	// Update selected elements when stroke color changes (Story 2.4)
-	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on color change, not selection change
 	useEffect(() => {
-		if (selectedElementIds.size === 0) return;
-		Array.from(selectedElementIds).forEach((id) => {
+		const currentSelection = selectedElementIdsRef.current;
+		if (currentSelection.size === 0) return;
+		Array.from(currentSelection).forEach((id) => {
 			updateElement(id, { strokeColor: currentStrokeColor });
 		});
-	}, [currentStrokeColor]);
+	}, [currentStrokeColor, updateElement]);
 
 	// Update selected elements when background color changes (Story 2.4)
-	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on color change, not selection change
 	useEffect(() => {
-		if (selectedElementIds.size === 0) return;
-		Array.from(selectedElementIds).forEach((id) => {
+		const currentSelection = selectedElementIdsRef.current;
+		if (currentSelection.size === 0) return;
+		Array.from(currentSelection).forEach((id) => {
 			updateElement(id, { backgroundColor: currentBackgroundColor });
 		});
-	}, [currentBackgroundColor]);
+	}, [currentBackgroundColor, updateElement]);
 
 	// Update selected elements when stroke width changes (Story 2.4)
-	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on width change, not selection change
 	useEffect(() => {
-		if (selectedElementIds.size === 0) return;
-		Array.from(selectedElementIds).forEach((id) => {
+		const currentSelection = selectedElementIdsRef.current;
+		if (currentSelection.size === 0) return;
+		Array.from(currentSelection).forEach((id) => {
 			updateElement(id, { strokeWidth: currentStrokeWidth });
 		});
-	}, [currentStrokeWidth]);
+	}, [currentStrokeWidth, updateElement]);
 
 	// Update selected elements when stroke style changes (Story 2.4)
-	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on style change, not selection change
 	useEffect(() => {
-		if (selectedElementIds.size === 0) return;
-		Array.from(selectedElementIds).forEach((id) => {
+		const currentSelection = selectedElementIdsRef.current;
+		if (currentSelection.size === 0) return;
+		Array.from(currentSelection).forEach((id) => {
 			updateElement(id, { strokeStyle: currentStrokeStyle });
 		});
-	}, [currentStrokeStyle]);
+	}, [currentStrokeStyle, updateElement]);
 
 	// Update selected elements when opacity changes (Story 2.4)
-	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on opacity change, not selection change
 	useEffect(() => {
-		if (selectedElementIds.size === 0) return;
-		Array.from(selectedElementIds).forEach((id) => {
+		const currentSelection = selectedElementIdsRef.current;
+		if (currentSelection.size === 0) return;
+		Array.from(currentSelection).forEach((id) => {
 			updateElement(id, { opacity: currentOpacity });
 		});
-	}, [currentOpacity]);
+	}, [currentOpacity, updateElement]);
 
 	// Track keyboard modifiers for shape creation (Shift for aspect ratio, Alt for center scaling)
 	useEffect(() => {
@@ -533,15 +684,22 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	const handleCompleteText = useCallback(
 		(text: string) => {
 			if (editingText && text.trim()) {
+				// Get the textarea dimensions for the text box size
+				const textarea = textareaRef.current;
+				const width = textarea ? textarea.offsetWidth : 200;
+				const height = textarea ? textarea.offsetHeight : 40;
+
 				const newText = createText(editingText.x, editingText.y, text, {
 					strokeColor: currentStrokeColor,
 					opacity: currentOpacity,
+					width: width / zoom, // Account for zoom when storing dimensions
+					height: height / zoom,
 				});
 				addElement(newText);
 			}
 			setEditingText(null);
 		},
-		[editingText, currentStrokeColor, currentOpacity, addElement],
+		[editingText, currentStrokeColor, currentOpacity, addElement, zoom],
 	);
 
 	// ─────────────────────────────────────────────────────────────────
@@ -557,7 +715,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		const selectedElements = elements.filter((el) =>
 			selectedElementIds.has(el.id),
 		);
-		setClipboard(selectedElements);
+		// Deep copy to avoid reference issues
+		const deepCopied = JSON.parse(JSON.stringify(selectedElements));
+		setClipboard(deepCopied);
 	}, [selectedElementIds, elements]);
 
 	/**
@@ -571,8 +731,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 		for (const el of clipboard) {
 			const newId = `${el.id}-copy-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+			// Deep copy the element to avoid reference issues with nested objects (points arrays, etc.)
 			const newElement: CanvasElement = {
-				...el,
+				...JSON.parse(JSON.stringify(el)),
 				id: newId,
 				x: el.x + offset,
 				y: el.y + offset,
@@ -669,6 +830,24 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		}
 	}, [selectedElementIds, deleteElements, clearSelection]);
 
+	/**
+	 * Clear all elements from canvas
+	 */
+	const handleClearCanvas = useCallback(() => {
+		if (elements.length === 0) return;
+
+		// Confirm before clearing
+		if (
+			window.confirm(
+				"Are you sure you want to clear the entire canvas? This cannot be undone.",
+			)
+		) {
+			const allIds = elements.map((el) => el.id);
+			deleteElements(allIds);
+			clearSelection();
+		}
+	}, [elements, deleteElements, clearSelection]);
+
 	// ─────────────────────────────────────────────────────────────────
 	// KEYBOARD SHORTCUTS
 	// ─────────────────────────────────────────────────────────────────
@@ -683,24 +862,26 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				return;
 			}
 
-			// Tool shortcuts
-			const toolShortcuts: Record<string, Tool> = {
-				v: "selection",
-				h: "hand",
-				r: "rectangle",
-				o: "ellipse",
-				d: "diamond",
-				l: "line",
-				a: "arrow",
-				p: "freedraw",
-				t: "text",
-				e: "eraser",
-			};
+			// Tool shortcuts (only when no modifier keys are pressed)
+			if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+				const toolShortcuts: Record<string, Tool> = {
+					v: "selection",
+					h: "hand",
+					r: "rectangle",
+					o: "ellipse",
+					d: "diamond",
+					l: "line",
+					a: "arrow",
+					p: "freedraw",
+					t: "text",
+					e: "eraser",
+				};
 
-			const tool = toolShortcuts[e.key.toLowerCase()];
-			if (tool) {
-				setActiveTool(tool);
-				return;
+				const tool = toolShortcuts[e.key.toLowerCase()];
+				if (tool) {
+					setActiveTool(tool);
+					return;
+				}
 			}
 
 			// Delete selected elements
@@ -714,7 +895,11 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			}
 
 			// Undo: Ctrl/Cmd + Z
-			if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+			if (
+				(e.ctrlKey || e.metaKey) &&
+				e.key.toLowerCase() === "z" &&
+				!e.shiftKey
+			) {
 				e.preventDefault();
 				undo();
 				return;
@@ -723,7 +908,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			// Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
 			if (
 				(e.ctrlKey || e.metaKey) &&
-				(e.key === "y" || (e.key === "z" && e.shiftKey))
+				(e.key.toLowerCase() === "y" ||
+					(e.key.toLowerCase() === "z" && e.shiftKey))
 			) {
 				e.preventDefault();
 				redo();
@@ -739,28 +925,28 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			}
 
 			// Select all: Ctrl/Cmd + A
-			if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
 				e.preventDefault();
 				setSelectedElementIds(new Set(elements.map((el) => el.id)));
 				return;
 			}
 
 			// Copy: Ctrl/Cmd + C
-			if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
 				e.preventDefault();
 				handleCopy();
 				return;
 			}
 
 			// Paste: Ctrl/Cmd + V
-			if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
 				e.preventDefault();
 				handlePaste();
 				return;
 			}
 
 			// Duplicate: Ctrl/Cmd + D
-			if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
 				e.preventDefault();
 				handleCopy();
 				handlePaste();
@@ -782,7 +968,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			}
 
 			// Export: Ctrl/Cmd + E
-			if ((e.ctrlKey || e.metaKey) && e.key === "e") {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
 				e.preventDefault();
 				setShowExportModal(true);
 				return;
@@ -846,6 +1032,31 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			const point = getCanvasPoint(e);
 			setInteractionStartPoint(point);
 
+			// SHIFT+CLICK while drawing a line/arrow: Add a new point (create multi-segment line)
+			if (
+				isDrawing &&
+				shiftPressed &&
+				drawingElement &&
+				(drawingElement.type === "line" || drawingElement.type === "arrow")
+			) {
+				const lineElement = drawingElement as LineElement | ArrowElement;
+				const dx = point.x - drawingElement.x;
+				const dy = point.y - drawingElement.y;
+
+				// Add the current point as a fixed intermediate point, then add new end point
+				const existingPoints = lineElement.points;
+				const newPoints = [...existingPoints, { x: dx, y: dy }];
+
+				setDrawingElement({
+					...lineElement,
+					points: newPoints,
+				} as CanvasElement);
+
+				// Update interaction start point to continue from here
+				setInteractionStartPoint(point);
+				return; // Don't process the switch - we just added a point
+			}
+
 			// Don't handle if clicking on existing element (for drag)
 			const clickedOnEmpty = e.target === e.target.getStage();
 
@@ -893,6 +1104,18 @@ export function Canvas({ roomId, token }: CanvasProps) {
 						},
 					);
 					setDrawingElement(newShape);
+					break;
+				}
+
+				case "line": {
+					setIsDrawing(true);
+					const newLine = createLine(point.x, point.y, [{ x: 0, y: 0 }], {
+						strokeColor: currentStrokeColor,
+						strokeWidth: currentStrokeWidth,
+						strokeStyle: currentStrokeStyle,
+						opacity: currentOpacity,
+					});
+					setDrawingElement(newLine);
 					break;
 				}
 
@@ -961,6 +1184,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			shiftPressed,
 			altPressed,
 			deleteElements,
+			isDrawing,
+			drawingElement,
 		],
 	);
 
@@ -1052,12 +1277,17 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				case "line":
 				case "arrow": {
 					const lineElement = drawingElement as LineElement | ArrowElement;
+					// Keep all existing points except the last one, then add updated end point
+					const existingPoints = lineElement.points;
+					const fixedPoints =
+						existingPoints.length > 1
+							? existingPoints.slice(0, -1) // Remove last point (the one we're dragging)
+							: existingPoints;
+					const newPoints = [...fixedPoints, { x: dx, y: dy }];
+
 					setDrawingElement({
 						...lineElement,
-						points: [
-							{ x: 0, y: 0 },
-							{ x: dx, y: dy },
-						],
+						points: newPoints,
 						width: Math.abs(dx),
 						height: Math.abs(dy),
 					} as CanvasElement);
@@ -1164,6 +1394,24 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	);
 
 	/**
+	 * Handle joint point drag - Update specific point in line/arrow
+	 */
+	const handleJointDrag = useCallback(
+		(id: string, pointIndex: number, x: number, y: number) => {
+			const element = elements.find((el) => el.id === id);
+			if (!element) return;
+
+			if (element.type === "line" || element.type === "arrow") {
+				const typedElement = element as LineElement | ArrowElement;
+				const newPoints = [...typedElement.points];
+				newPoints[pointIndex] = { x, y };
+				updateElement(id, { points: newPoints });
+			}
+		},
+		[elements, updateElement],
+	);
+
+	/**
 	 * Handle mouse leave - Clear cursor from awareness
 	 */
 	const handleMouseLeave = useCallback(() => {
@@ -1195,7 +1443,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			/>
 
 			{/* UI Components */}
-			<HeaderLeft />
+			<HeaderLeft onClearCanvas={handleClearCanvas} />
 			<HeaderRight />
 			<Toolbar />
 			<PropertiesPanel />
@@ -1246,6 +1494,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 							activeTool === "selection",
 							false, // not preview
 							handleElementDragEnd,
+							handleJointDrag,
 						),
 					)}
 
@@ -1298,10 +1547,16 @@ export function Canvas({ roomId, token }: CanvasProps) {
 							border: "2px solid #6965db",
 							borderRadius: "4px",
 							padding: "8px",
-							minWidth: "200px",
+							minWidth: "100px",
 							minHeight: "40px",
-							resize: "none",
-							overflow: "hidden",
+							width: editingText.initialWidth
+								? `${editingText.initialWidth * zoom}px`
+								: "200px",
+							height: editingText.initialHeight
+								? `${editingText.initialHeight * zoom}px`
+								: "auto",
+							resize: "both",
+							overflow: "auto",
 							outline: "none",
 						}}
 						onKeyDown={(e) => {
@@ -1320,6 +1575,10 @@ export function Canvas({ roomId, token }: CanvasProps) {
 							handleCompleteText(e.currentTarget.value);
 						}}
 					/>
+					{/* Resize hint */}
+					<div className="text-xs text-gray-400 mt-1">
+						Drag corners/edges to resize • Enter to save • Esc to cancel
+					</div>
 				</div>
 			)}
 

@@ -41,9 +41,10 @@ import {
 interface SidebarMenuProps {
 	isOpen: boolean;
 	onClose: () => void;
+	onClearCanvas?: () => void;
 }
 
-function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
+function SidebarMenu({ isOpen, onClose, onClearCanvas }: SidebarMenuProps) {
 	return (
 		<>
 			{/* Backdrop */}
@@ -127,6 +128,12 @@ function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 								icon={<Trash2 />}
 								label="Clear Canvas"
 								variant="danger"
+								onClick={() => {
+									if (onClearCanvas) {
+										onClearCanvas();
+									}
+									onClose();
+								}}
 							/>
 						</div>
 					</div>
@@ -355,7 +362,11 @@ function ShareModal({ isOpen, onClose, roomId }: ShareModalProps) {
 // HEADER LEFT (Menu & Title)
 // ============================================================================
 
-export function HeaderLeft() {
+interface HeaderLeftProps {
+	onClearCanvas?: () => void;
+}
+
+export function HeaderLeft({ onClearCanvas }: HeaderLeftProps) {
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [docName, setDocName] = useState("");
 
@@ -398,7 +409,11 @@ export function HeaderLeft() {
 			</div>
 
 			{/* Sidebar Menu */}
-			<SidebarMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+			<SidebarMenu
+				isOpen={menuOpen}
+				onClose={() => setMenuOpen(false)}
+				onClearCanvas={onClearCanvas}
+			/>
 		</>
 	);
 }
