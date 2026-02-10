@@ -57,18 +57,18 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Ellipse, Layer, Line, Rect, Stage, Text } from "react-konva";
+import { Ellipse, Layer, Line, Path, Rect, Stage, Text } from "react-konva";
 
 import { useYjsSync } from "../hooks/useYjsSync";
 import {
 	createArrow,
-	createEllipse,
 	createFreedraw,
-	createLine,
-	createRectangle,
+	createShape,
 	createText,
 	getElementAtPoint,
+	type ShapeModifiers,
 } from "../lib/element-utils";
+import { outlineToSvgPath } from "../lib/stroke-utils";
 import {
 	useCanvasStore,
 	useCollaboratorsArray,
@@ -103,12 +103,15 @@ interface CanvasProps {
  *
  * @param element - The element to render
  * @param isSelected - Whether the element is selected
+ * @param isDraggable - Whether the element can be dragged
+ * @param isPreview - Whether this is a preview (dashed rendering)
  * @param onDragEnd - Callback when drag ends
  */
 function renderElement(
 	element: CanvasElement,
 	_isSelected: boolean,
 	isDraggable: boolean,
+	isPreview: boolean,
 	onDragEnd: (id: string, x: number, y: number) => void,
 ) {
 	const commonProps = {
@@ -126,8 +129,9 @@ function renderElement(
 	const strokeProps = {
 		stroke: element.strokeColor,
 		strokeWidth: element.strokeWidth,
-		dash:
-			element.strokeStyle === "dashed"
+		dash: isPreview
+			? [10, 5] // Dashed preview
+			: element.strokeStyle === "dashed"
 				? [10, 5]
 				: element.strokeStyle === "dotted"
 					? [2, 2]
@@ -183,6 +187,8 @@ function renderElement(
 					tension={0}
 					lineCap="round"
 					lineJoin="round"
+					// Expand hit region for thin strokes (Story 2.4)
+					hitStrokeWidth={Math.max(element.strokeWidth, 10)}
 					// Arrow heads for arrow type
 					{...(element.type === "arrow" && {
 						pointerLength: 10,
@@ -194,16 +200,59 @@ function renderElement(
 
 		case "freedraw": {
 			const freedrawElement = element as FreedrawElement;
-			const points = freedrawElement.points.flatMap((p) => [p[0], p[1]]);
+			// Use perfect-freehand for variable-width strokes
+			// Convert points to [x, y] format (strip optional pressure)
+			const points = freedrawElement.points.map(
+				([x, y]) => [x, y] as [number, number],
+			);
+			const pathData = outlineToSvgPath(points);
+			return (
+				<Path
+					key={element.id}
+					id={element.id}
+					x={element.x}
+					y={element.y}
+					data={pathData}
+					fill={element.strokeColor}
+					opacity={element.opacity / 100}
+					rotation={element.angle}
+					draggable={isDraggable}
+					onDragEnd={(e: KonvaEventObject<DragEvent>) => {
+						onDragEnd(element.id, e.target.x(), e.target.y());
+					}}
+				/>
+			);
+		}
+
+		case "diamond": {
+			const w = element.width;
+			const h = element.height;
+			const diamondPoints = [
+				w / 2,
+				0, // top
+				w,
+				h / 2, // right
+				w / 2,
+				h, // bottom
+				0,
+				h / 2, // left
+				w / 2,
+				0, // close path
+			];
 			return (
 				<Line
 					key={element.id}
 					{...commonProps}
 					{...strokeProps}
-					points={points}
-					tension={0.5}
-					lineCap="round"
-					lineJoin="round"
+					points={diamondPoints}
+					closed={true}
+					// Expand hit region for thin strokes (Story 2.4)
+					hitStrokeWidth={Math.max(element.strokeWidth, 10)}
+					fill={
+						element.backgroundColor === "transparent"
+							? undefined
+							: element.backgroundColor
+					}
 				/>
 			);
 		}
@@ -304,8 +353,28 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		null,
 	);
 
+	// Keyboard modifiers for shape creation
+	const [shiftPressed, setShiftPressed] = useState(false);
+	const [altPressed, setAltPressed] = useState(false);
+
+	// Text editing state
+	const [editingText, setEditingText] = useState<{
+		x: number;
+		y: number;
+		initialText?: string;
+	} | null>(null);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const textareaJustOpenedRef = useRef<boolean>(false);
+
 	// Freedraw points accumulator
 	const freedrawPointsRef = useRef<Array<[number, number]>>([]);
+
+	// Eraser state - track continuous drag
+	const isErasingRef = useRef<boolean>(false);
+	const erasedElementsRef = useRef<Set<string>>(new Set());
+
+	// Pressure tracking for freedraw
+	const lastPointTimeRef = useRef<number>(Date.now());
 
 	// Container dimensions
 	const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -359,6 +428,122 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		updateSelection(Array.from(selectedElementIds));
 	}, [selectedElementIds, updateSelection]);
 
+	// Update selected elements when stroke color changes (Story 2.4)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on color change, not selection change
+	useEffect(() => {
+		if (selectedElementIds.size === 0) return;
+		Array.from(selectedElementIds).forEach((id) => {
+			updateElement(id, { strokeColor: currentStrokeColor });
+		});
+	}, [currentStrokeColor]);
+
+	// Update selected elements when background color changes (Story 2.4)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on color change, not selection change
+	useEffect(() => {
+		if (selectedElementIds.size === 0) return;
+		Array.from(selectedElementIds).forEach((id) => {
+			updateElement(id, { backgroundColor: currentBackgroundColor });
+		});
+	}, [currentBackgroundColor]);
+
+	// Update selected elements when stroke width changes (Story 2.4)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on width change, not selection change
+	useEffect(() => {
+		if (selectedElementIds.size === 0) return;
+		Array.from(selectedElementIds).forEach((id) => {
+			updateElement(id, { strokeWidth: currentStrokeWidth });
+		});
+	}, [currentStrokeWidth]);
+
+	// Update selected elements when stroke style changes (Story 2.4)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on style change, not selection change
+	useEffect(() => {
+		if (selectedElementIds.size === 0) return;
+		Array.from(selectedElementIds).forEach((id) => {
+			updateElement(id, { strokeStyle: currentStrokeStyle });
+		});
+	}, [currentStrokeStyle]);
+
+	// Update selected elements when opacity changes (Story 2.4)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only trigger on opacity change, not selection change
+	useEffect(() => {
+		if (selectedElementIds.size === 0) return;
+		Array.from(selectedElementIds).forEach((id) => {
+			updateElement(id, { opacity: currentOpacity });
+		});
+	}, [currentOpacity]);
+
+	// Track keyboard modifiers for shape creation (Shift for aspect ratio, Alt for center scaling)
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Shift") setShiftPressed(true);
+			if (e.key === "Alt") setAltPressed(true);
+		};
+
+		const handleKeyUp = (e: KeyboardEvent) => {
+			if (e.key === "Shift") setShiftPressed(false);
+			if (e.key === "Alt") setAltPressed(false);
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		window.addEventListener("keyup", handleKeyUp);
+
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+			window.removeEventListener("keyup", handleKeyUp);
+		};
+	}, []);
+
+	// Auto-resize textarea when editing text
+	useEffect(() => {
+		if (editingText && textareaRef.current) {
+			const textarea = textareaRef.current;
+
+			// Mark that we just opened the textarea to prevent immediate blur
+			textareaJustOpenedRef.current = true;
+
+			// Use setTimeout to ensure focus happens after render
+			setTimeout(() => {
+				textarea.focus();
+				textarea.select();
+				// Allow blur events after a short delay
+				setTimeout(() => {
+					textareaJustOpenedRef.current = false;
+				}, 100);
+			}, 0);
+
+			// Auto-resize function
+			const resize = () => {
+				textarea.style.height = "auto";
+				textarea.style.height = `${textarea.scrollHeight}px`;
+			};
+
+			resize();
+			textarea.addEventListener("input", resize);
+
+			return () => {
+				textarea.removeEventListener("input", resize);
+			};
+		}
+	}, [editingText]);
+
+	/**
+	 * Complete text editing and create text element
+	 */
+	const handleCompleteText = useCallback(
+		(text: string) => {
+			if (editingText && text.trim()) {
+				const newText = createText(editingText.x, editingText.y, text, {
+					strokeColor: currentStrokeColor,
+					opacity: currentOpacity,
+				});
+				addElement(newText);
+			}
+			setEditingText(null);
+		},
+		[editingText, currentStrokeColor, currentOpacity, addElement],
+	);
+
 	// ─────────────────────────────────────────────────────────────────
 	// COPY / PASTE / LAYER HANDLERS
 	// ─────────────────────────────────────────────────────────────────
@@ -409,12 +594,12 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	const handleBringForward = useCallback(() => {
 		if (selectedElementIds.size === 0) return;
 
-		for (const id of selectedElementIds) {
+		Array.from(selectedElementIds).forEach((id) => {
 			const element = elements.find((el) => el.id === id);
 			if (element) {
 				updateElement(id, { zIndex: (element.zIndex || 0) + 1 });
 			}
-		}
+		});
 	}, [selectedElementIds, elements, updateElement]);
 
 	/**
@@ -423,12 +608,12 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	const handleSendBackward = useCallback(() => {
 		if (selectedElementIds.size === 0) return;
 
-		for (const id of selectedElementIds) {
+		Array.from(selectedElementIds).forEach((id) => {
 			const element = elements.find((el) => el.id === id);
 			if (element) {
 				updateElement(id, { zIndex: Math.max(0, (element.zIndex || 0) - 1) });
 			}
-		}
+		});
 	}, [selectedElementIds, elements, updateElement]);
 
 	/**
@@ -439,9 +624,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 		const maxZ = Math.max(...elements.map((el) => el.zIndex || 0), 0);
 
-		for (const id of selectedElementIds) {
+		Array.from(selectedElementIds).forEach((id) => {
 			updateElement(id, { zIndex: maxZ + 1 });
-		}
+		});
 	}, [selectedElementIds, elements, updateElement]);
 
 	/**
@@ -450,9 +635,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	const handleSendToBack = useCallback(() => {
 		if (selectedElementIds.size === 0) return;
 
-		for (const id of selectedElementIds) {
+		Array.from(selectedElementIds).forEach((id) => {
 			updateElement(id, { zIndex: 0 });
-		}
+		});
 	}, [selectedElementIds, updateElement]);
 
 	/**
@@ -504,6 +689,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				h: "hand",
 				r: "rectangle",
 				o: "ellipse",
+				d: "diamond",
 				l: "line",
 				a: "arrow",
 				p: "freedraw",
@@ -683,41 +869,30 @@ export function Canvas({ roomId, token }: CanvasProps) {
 					setIsDragging(true);
 					break;
 
-				case "rectangle": {
+				case "rectangle":
+				case "ellipse":
+				case "diamond": {
 					setIsDrawing(true);
-					const newRect = createRectangle(point.x, point.y, 0, 0, {
-						strokeColor: currentStrokeColor,
-						backgroundColor: currentBackgroundColor,
-						strokeWidth: currentStrokeWidth,
-						strokeStyle: currentStrokeStyle,
-						opacity: currentOpacity,
-					});
-					setDrawingElement(newRect);
-					break;
-				}
-
-				case "ellipse": {
-					setIsDrawing(true);
-					const newEllipse = createEllipse(point.x, point.y, 0, 0, {
-						strokeColor: currentStrokeColor,
-						backgroundColor: currentBackgroundColor,
-						strokeWidth: currentStrokeWidth,
-						strokeStyle: currentStrokeStyle,
-						opacity: currentOpacity,
-					});
-					setDrawingElement(newEllipse);
-					break;
-				}
-
-				case "line": {
-					setIsDrawing(true);
-					const newLine = createLine(point.x, point.y, [{ x: 0, y: 0 }], {
-						strokeColor: currentStrokeColor,
-						strokeWidth: currentStrokeWidth,
-						strokeStyle: currentStrokeStyle,
-						opacity: currentOpacity,
-					});
-					setDrawingElement(newLine);
+					const modifiers: ShapeModifiers = {
+						shift: shiftPressed,
+						alt: altPressed,
+					};
+					const newShape = createShape(
+						activeTool as "rectangle" | "ellipse" | "diamond",
+						point.x,
+						point.y,
+						0,
+						0,
+						modifiers,
+						{
+							strokeColor: currentStrokeColor,
+							backgroundColor: currentBackgroundColor,
+							strokeWidth: currentStrokeWidth,
+							strokeStyle: currentStrokeStyle,
+							opacity: currentOpacity,
+						},
+					);
+					setDrawingElement(newShape);
 					break;
 				}
 
@@ -746,21 +921,23 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				}
 
 				case "text": {
-					const text = prompt("Enter text:");
-					if (text) {
-						const newText = createText(point.x, point.y, text, {
-							strokeColor: currentStrokeColor,
-							opacity: currentOpacity,
-						});
-						addElement(newText);
-					}
+					// Open text editor overlay instead of prompt
+					setEditingText({
+						x: point.x,
+						y: point.y,
+					});
 					break;
 				}
 
 				case "eraser": {
+					// Start erasing - enable continuous drag deletion
+					isErasingRef.current = true;
+					erasedElementsRef.current.clear();
+
 					const elementToDelete = getElementAtPoint(point, elements);
 					if (elementToDelete) {
 						deleteElements([elementToDelete.id]);
+						erasedElementsRef.current.add(elementToDelete.id);
 					}
 					break;
 				}
@@ -781,7 +958,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			currentStrokeWidth,
 			currentStrokeStyle,
 			currentOpacity,
-			addElement,
+			shiftPressed,
+			altPressed,
 			deleteElements,
 		],
 	);
@@ -813,6 +991,19 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				return;
 			}
 
+			// Handle eraser continuous drag deletion
+			if (isErasingRef.current && activeTool === "eraser") {
+				const elementToDelete = getElementAtPoint(point, elements);
+				if (
+					elementToDelete &&
+					!erasedElementsRef.current.has(elementToDelete.id)
+				) {
+					deleteElements([elementToDelete.id]);
+					erasedElementsRef.current.add(elementToDelete.id);
+				}
+				return;
+			}
+
 			// Handle drawing
 			if (!isDrawing || !drawingElement || !interactionStartPoint) return;
 
@@ -821,11 +1012,39 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 			switch (drawingElement.type) {
 				case "rectangle":
-				case "ellipse": {
+				case "ellipse":
+				case "diamond": {
+					// Apply shape modifiers (Shift for aspect ratio, Alt for center scaling)
+					const modifiers: ShapeModifiers = {
+						shift: shiftPressed,
+						alt: altPressed,
+					};
+					let width = dx;
+					let height = dy;
+					let x = drawingElement.x;
+					let y = drawingElement.y;
+
+					// Apply aspect ratio lock (Shift key)
+					if (modifiers.shift) {
+						const size = Math.max(Math.abs(width), Math.abs(height));
+						width = width >= 0 ? size : -size;
+						height = height >= 0 ? size : -size;
+					}
+
+					// Apply center scaling (Alt key)
+					if (modifiers.alt) {
+						x = interactionStartPoint.x - width / 2;
+						y = interactionStartPoint.y - height / 2;
+						width = width * 2;
+						height = height * 2;
+					}
+
 					setDrawingElement({
 						...drawingElement,
-						width: dx,
-						height: dy,
+						x,
+						y,
+						width,
+						height,
 					} as CanvasElement);
 					break;
 				}
@@ -846,7 +1065,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				}
 
 				case "freedraw": {
+					// Add point to freedraw path
 					freedrawPointsRef.current.push([dx, dy]);
+
 					setDrawingElement({
 						...drawingElement,
 						points: [...freedrawPointsRef.current],
@@ -867,6 +1088,10 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			setScroll,
 			isDrawing,
 			drawingElement,
+			shiftPressed,
+			altPressed,
+			elements,
+			deleteElements,
 		],
 	);
 
@@ -911,6 +1136,13 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		setDrawingElement(null);
 		setInteractionStartPoint(null);
 		freedrawPointsRef.current = [];
+
+		// Clear eraser state
+		isErasingRef.current = false;
+		erasedElementsRef.current.clear();
+
+		// Reset pressure tracking
+		lastPointTimeRef.current = Date.now();
 	}, [
 		isDrawing,
 		drawingElement,
@@ -1012,32 +1244,14 @@ export function Canvas({ roomId, token }: CanvasProps) {
 							element,
 							selectedElementIds.has(element.id),
 							activeTool === "selection",
+							false, // not preview
 							handleElementDragEnd,
 						),
 					)}
 
 					{/* Render element being drawn */}
 					{drawingElement &&
-						renderElement(drawingElement, false, false, () => {})}
-
-					{/* Selection indicator for selected elements */}
-					{activeTool === "selection" &&
-						selectedElementIds.size > 0 &&
-						elements
-							.filter((el) => selectedElementIds.has(el.id))
-							.map((el) => (
-								<Rect
-									key={`selection-${el.id}`}
-									x={el.x - 4}
-									y={el.y - 4}
-									width={(el.width || 0) + 8}
-									height={(el.height || 0) + 8}
-									stroke="#6965db"
-									strokeWidth={1}
-									dash={[4, 4]}
-									listening={false}
-								/>
-							))}
+						renderElement(drawingElement, false, false, true, () => {})}
 				</Layer>
 			</Stage>
 
@@ -1062,6 +1276,52 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				onBringToFront={handleBringToFront}
 				onSendToBack={handleSendToBack}
 			/>
+
+			{/* Text Editing Overlay */}
+			{editingText && (
+				<div
+					style={{
+						position: "absolute",
+						left: `${editingText.x * zoom + scrollX}px`,
+						top: `${editingText.y * zoom + scrollY}px`,
+						zIndex: 1000,
+					}}
+				>
+					<textarea
+						ref={textareaRef}
+						defaultValue={editingText.initialText || ""}
+						style={{
+							fontSize: "16px",
+							fontFamily: "Arial",
+							color: currentStrokeColor,
+							background: "white",
+							border: "2px solid #6965db",
+							borderRadius: "4px",
+							padding: "8px",
+							minWidth: "200px",
+							minHeight: "40px",
+							resize: "none",
+							overflow: "hidden",
+							outline: "none",
+						}}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && !e.shiftKey) {
+								e.preventDefault();
+								handleCompleteText(e.currentTarget.value);
+							} else if (e.key === "Escape") {
+								setEditingText(null);
+							}
+						}}
+						onBlur={(e) => {
+							// Ignore blur if textarea just opened (prevents immediate close)
+							if (textareaJustOpenedRef.current) {
+								return;
+							}
+							handleCompleteText(e.currentTarget.value);
+						}}
+					/>
+				</div>
+			)}
 
 			{/* Export Modal */}
 			<ExportModal

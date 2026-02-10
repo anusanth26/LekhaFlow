@@ -11,6 +11,7 @@
 import {
 	ArrowUpRight,
 	Circle,
+	Diamond,
 	Eraser,
 	Hand,
 	Minus,
@@ -26,6 +27,7 @@ type Tool =
 	| "selection"
 	| "rectangle"
 	| "ellipse"
+	| "diamond"
 	| "line"
 	| "arrow"
 	| "freedraw"
@@ -59,6 +61,12 @@ const TOOLS: ToolDefinition[] = [
 		icon: <Circle size={18} />,
 		label: "Ellipse",
 		shortcut: "O",
+	},
+	{
+		id: "diamond",
+		icon: <Diamond size={18} />,
+		label: "Diamond",
+		shortcut: "D",
 	},
 	{ id: "line", icon: <Minus size={18} />, label: "Line", shortcut: "L" },
 	{
