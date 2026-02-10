@@ -342,7 +342,7 @@ const getRandomColor = () =>
 /**
  * Initial state values
  */
-const initialState: CanvasState = {
+export const initialState: CanvasState = {
 	// Elements
 	elements: new Map(),
 	selectedElementIds: new Set(),
@@ -471,7 +471,8 @@ export const useCanvasStore = create<CanvasState & CanvasActions>()(
 		// TOOL ACTIONS
 		// ─────────────────────────────────────────────────────────────────
 
-		setActiveTool: (tool) => set({ activeTool: tool }),
+		setActiveTool: (tool) =>
+			set({ activeTool: tool, selectedElementIds: new Set() }),
 		setStrokeColor: (color) => set({ currentStrokeColor: color }),
 		setBackgroundColor: (color) => set({ currentBackgroundColor: color }),
 		setStrokeWidth: (width) => set({ currentStrokeWidth: width }),
