@@ -625,14 +625,18 @@ export const useSelectedElements = () => {
 };
 
 /**
- * Get elements as array (for rendering)
+ * Get elements as array, sorted by zIndex (for correct rendering order)
  *
  * useShallow prevents infinite loops by doing shallow comparison
  * of array contents instead of reference equality
  */
 export const useElementsArray = () => {
 	return useCanvasStore(
-		useShallow((state) => Array.from(state.elements.values())),
+		useShallow((state) =>
+			Array.from(state.elements.values()).sort(
+				(a, b) => (a.zIndex || 0) - (b.zIndex || 0),
+			),
+		),
 	);
 };
 

@@ -80,7 +80,7 @@ import {
 	getElementAtPoint,
 	type ShapeModifiers,
 } from "../lib/element-utils";
-import { outlineToSvgPath } from "../lib/stroke-utils";
+import { outlineToSvgPath, simplifyPath } from "../lib/stroke-utils";
 import {
 	useCanvasStore,
 	useCollaboratorsArray,
@@ -93,6 +93,8 @@ import { ExportModal } from "./canvas/ExportModal";
 import { HeaderLeft, HeaderRight } from "./canvas/Header";
 import { HelpPanel } from "./canvas/HelpPanel";
 import { PropertiesPanel } from "./canvas/PropertiesPanel";
+import { type HandlePosition, ResizeHandles } from "./canvas/ResizeHandles";
+import { RotationControls } from "./canvas/RotationControls";
 // Import components directly to avoid circular dependencies through barrel exports
 import { Toolbar } from "./canvas/Toolbar";
 import { ZoomControls } from "./canvas/ZoomControls";
@@ -135,7 +137,22 @@ function renderElement(
 		rotation: element.angle,
 		draggable: isDraggable,
 		onDragEnd: (e: KonvaEventObject<DragEvent>) => {
-			onDragEnd(element.id, e.target.x(), e.target.y());
+			// For shapes with center-based positioning, adjust back to top-left
+			let finalX = e.target.x();
+			let finalY = e.target.y();
+
+			// Shapes that use center positioning need offset adjustment
+			if (
+				element.type === "rectangle" ||
+				element.type === "ellipse" ||
+				element.type === "diamond" ||
+				element.type === "text"
+			) {
+				finalX = e.target.x() - element.width / 2;
+				finalY = e.target.y() - element.height / 2;
+			}
+
+			onDragEnd(element.id, finalX, finalY);
 		},
 	};
 
@@ -185,8 +202,12 @@ function renderElement(
 					{...commonProps}
 					{...strokeProps}
 					{...selectionProps}
+					x={element.x + element.width / 2}
+					y={element.y + element.height / 2}
 					width={element.width}
 					height={element.height}
+					offsetX={element.width / 2}
+					offsetY={element.height / 2}
 					fill={
 						element.backgroundColor === "transparent"
 							? undefined
@@ -203,10 +224,10 @@ function renderElement(
 					{...commonProps}
 					{...strokeProps}
 					{...selectionProps}
+					x={element.x + element.width / 2}
+					y={element.y + element.height / 2}
 					radiusX={Math.abs(element.width) / 2}
 					radiusY={Math.abs(element.height) / 2}
-					offsetX={-element.width / 2}
-					offsetY={-element.height / 2}
 					fill={
 						element.backgroundColor === "transparent"
 							? undefined
@@ -218,10 +239,9 @@ function renderElement(
 		case "line": {
 			const lineElement = element as LineElement;
 			const points = lineElement.points.flatMap((p) => [p.x, p.y]);
-			const hasJoints = lineElement.points.length >= 3;
 
-			// If selected and has 3+ points, render with draggable joint handles
-			if (isSelected && hasJoints && onJointDrag && !isPreview) {
+			// If selected, render with draggable endpoint/joint handles
+			if (isSelected && onJointDrag && !isPreview) {
 				return (
 					<Group key={element.id}>
 						<Line
@@ -277,10 +297,9 @@ function renderElement(
 		case "arrow": {
 			const arrowElement = element as ArrowElement;
 			const points = arrowElement.points.flatMap((p) => [p.x, p.y]);
-			const hasJoints = arrowElement.points.length >= 3;
 
-			// If selected and has 3+ points, render with draggable joint handles
-			if (isSelected && hasJoints && onJointDrag && !isPreview) {
+			// If selected, render with draggable endpoint/joint handles
+			if (isSelected && onJointDrag && !isPreview) {
 				return (
 					<Group key={element.id}>
 						<Arrow
@@ -341,12 +360,53 @@ function renderElement(
 
 		case "freedraw": {
 			const freedrawElement = element as FreedrawElement;
-			// Use perfect-freehand for variable-width strokes
-			// Convert points to [x, y] format (strip optional pressure)
-			const points = freedrawElement.points.map(
-				([x, y]) => [x, y] as [number, number],
+			// Strip optional pressure parameter for rendering
+			const points: Array<[number, number]> = freedrawElement.points.map(
+				([x, y]) => [x, y],
 			);
-			const pathData = outlineToSvgPath(points);
+
+			// For dashed/dotted styles, render as a stroked line
+			// For solid style, use perfect-freehand filled path for smooth variable-width strokes
+			if (
+				element.strokeStyle === "dashed" ||
+				element.strokeStyle === "dotted"
+			) {
+				// Convert points to flat array for Konva Line
+				const flatPoints = points.flat();
+				const dashArray = element.strokeStyle === "dashed" ? [10, 5] : [2, 2];
+
+				return (
+					<Line
+						key={element.id}
+						id={element.id}
+						x={element.x}
+						y={element.y}
+						points={flatPoints}
+						stroke={element.strokeColor}
+						strokeWidth={element.strokeWidth}
+						dash={dashArray}
+						lineCap="round"
+						lineJoin="round"
+						opacity={element.opacity / 100}
+						rotation={element.angle}
+						draggable={isDraggable}
+						hitStrokeWidth={Math.max(element.strokeWidth, 10)}
+						{...lineSelectionProps}
+						onDragEnd={(e: KonvaEventObject<DragEvent>) => {
+							onDragEnd(element.id, e.target.x(), e.target.y());
+						}}
+					/>
+				);
+			}
+
+			// Solid style: use perfect-freehand for smooth strokes with variable width
+			const pathData = outlineToSvgPath(points, {
+				size: element.strokeWidth * 2,
+				thinning: 0.5,
+				smoothing: 0.5,
+				streamline: 0.5,
+				simulatePressure: true, // Constant width
+			});
 			return (
 				<Path
 					key={element.id}
@@ -369,17 +429,16 @@ function renderElement(
 		case "diamond": {
 			const w = element.width;
 			const h = element.height;
+			// Center the diamond points around (0,0) so rotation works correctly
 			const diamondPoints = [
-				w / 2,
-				0, // top
-				w,
-				h / 2, // right
-				w / 2,
-				h, // bottom
 				0,
-				h / 2, // left
+				-h / 2, // top
 				w / 2,
-				0, // close path
+				0, // right
+				0,
+				h / 2, // bottom
+				-w / 2,
+				0, // left
 			];
 			return (
 				<Line
@@ -387,6 +446,8 @@ function renderElement(
 					{...commonProps}
 					{...strokeProps}
 					{...selectionProps}
+					x={element.x + w / 2}
+					y={element.y + h / 2}
 					points={diamondPoints}
 					closed={true}
 					// Expand hit region for thin strokes (Story 2.4)
@@ -407,6 +468,10 @@ function renderElement(
 					key={element.id}
 					{...commonProps}
 					{...selectionProps}
+					x={element.x + element.width / 2}
+					y={element.y + element.height / 2}
+					offsetX={element.width / 2}
+					offsetY={element.height / 2}
 					text={textElement.text}
 					fontSize={textElement.fontSize}
 					fontFamily="Arial"
@@ -488,6 +553,12 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	const elements = useElementsArray();
 	const collaborators = useCollaboratorsArray();
 
+	// Helper to get the next zIndex for new elements (always on top)
+	const getNextZIndex = useCallback(() => {
+		if (elements.length === 0) return 1;
+		return Math.max(...elements.map((el) => el.zIndex || 0)) + 1;
+	}, [elements]);
+
 	// ─────────────────────────────────────────────────────────────────
 	// LOCAL STATE for drawing
 	// ─────────────────────────────────────────────────────────────────
@@ -508,19 +579,21 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		initialText?: string;
 		initialWidth?: number;
 		initialHeight?: number;
+		elementId?: string; // If set, editing existing element
 	} | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const textareaJustOpenedRef = useRef<boolean>(false);
 
-	// Freedraw points accumulator
+	// Freedraw points accumulator (persistent strokes)
 	const freedrawPointsRef = useRef<Array<[number, number]>>([]);
+
+	// Laser points accumulator (temporary pointer)
+	const laserPointsRef = useRef<Array<[number, number]>>([]);
+	const [laserPath, setLaserPath] = useState<string | null>(null);
 
 	// Eraser state - track continuous drag
 	const isErasingRef = useRef<boolean>(false);
 	const erasedElementsRef = useRef<Set<string>>(new Set());
-
-	// Pressure tracking for freedraw
-	const lastPointTimeRef = useRef<number>(Date.now());
 
 	// Ref to track current selection (fixes stale closure in color update effects)
 	const selectedElementIdsRef = useRef<Set<string>>(selectedElementIds);
@@ -541,6 +614,24 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		y: 0,
 		visible: false,
 	});
+
+	// Resize state
+	const [resizingElement, setResizingElement] = useState<{
+		id: string;
+		originalX: number;
+		originalY: number;
+		originalWidth: number;
+		originalHeight: number;
+		handle: HandlePosition;
+		startMouseX: number;
+		startMouseY: number;
+	} | null>(null);
+
+	// Rotation state
+	const [rotatingElement, setRotatingElement] = useState<{
+		id: string;
+		originalAngle: number;
+	} | null>(null);
 
 	// Export modal state
 	const [showExportModal, setShowExportModal] = useState(false);
@@ -679,7 +770,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	}, [editingText]);
 
 	/**
-	 * Complete text editing and create text element
+	 * Complete text editing and create/update text element
 	 */
 	const handleCompleteText = useCallback(
 		(text: string) => {
@@ -689,17 +780,40 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				const width = textarea ? textarea.offsetWidth : 200;
 				const height = textarea ? textarea.offsetHeight : 40;
 
-				const newText = createText(editingText.x, editingText.y, text, {
-					strokeColor: currentStrokeColor,
-					opacity: currentOpacity,
-					width: width / zoom, // Account for zoom when storing dimensions
-					height: height / zoom,
-				});
-				addElement(newText);
+				if (editingText.elementId) {
+					// Update existing text element
+					updateElement(editingText.elementId, {
+						text,
+						width: width / zoom,
+						height: height / zoom,
+					});
+				} else {
+					// Create new text element
+					const newText = createText(editingText.x, editingText.y, text, {
+						strokeColor: currentStrokeColor,
+						opacity: currentOpacity,
+						width: width / zoom,
+						height: height / zoom,
+						zIndex: getNextZIndex(),
+					});
+					addElement(newText);
+				}
+			} else if (editingText?.elementId && !text.trim()) {
+				// If editing existing element and text is empty, delete the element
+				deleteElements([editingText.elementId]);
 			}
 			setEditingText(null);
 		},
-		[editingText, currentStrokeColor, currentOpacity, addElement, zoom],
+		[
+			editingText,
+			currentStrokeColor,
+			currentOpacity,
+			addElement,
+			updateElement,
+			deleteElements,
+			zoom,
+			getNextZIndex,
+		],
 	);
 
 	// ─────────────────────────────────────────────────────────────────
@@ -728,6 +842,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 		const newIds = new Set<string>();
 		const offset = 20; // Offset for pasted elements
+		let nextZ = getNextZIndex();
 
 		for (const el of clipboard) {
 			const newId = `${el.id}-copy-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -737,69 +852,104 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				id: newId,
 				x: el.x + offset,
 				y: el.y + offset,
+				zIndex: nextZ,
 				version: 0,
 				created: Date.now(),
 				updated: Date.now(),
 			};
 			addElement(newElement);
 			newIds.add(newId);
+			nextZ++;
 		}
 
 		// Select pasted elements
 		setSelectedElementIds(newIds);
-	}, [clipboard, addElement, setSelectedElementIds]);
+	}, [clipboard, addElement, setSelectedElementIds, getNextZIndex]);
 
 	/**
-	 * Bring selected elements forward (increase z-index)
+	 * Bring selected elements forward one level (swap with element above)
+	 * Elements array is already sorted by zIndex (ascending)
 	 */
 	const handleBringForward = useCallback(() => {
 		if (selectedElementIds.size === 0) return;
 
+		// Process each selected element
 		Array.from(selectedElementIds).forEach((id) => {
-			const element = elements.find((el) => el.id === id);
-			if (element) {
-				updateElement(id, { zIndex: (element.zIndex || 0) + 1 });
-			}
+			const currentIndex = elements.findIndex((el) => el.id === id);
+			if (currentIndex === -1 || currentIndex === elements.length - 1) return; // Already on top or not found
+
+			const currentElement = elements[currentIndex];
+			const elementAbove = elements[currentIndex + 1];
+
+			if (!currentElement || !elementAbove) return;
+
+			// Swap zIndex values with element above
+			const currentZ = currentElement.zIndex ?? currentIndex;
+			const aboveZ = elementAbove.zIndex ?? currentIndex + 1;
+
+			// Swap: current gets higher, above gets lower
+			updateElement(id, { zIndex: aboveZ });
+			updateElement(elementAbove.id, { zIndex: currentZ });
 		});
 	}, [selectedElementIds, elements, updateElement]);
 
 	/**
-	 * Send selected elements backward (decrease z-index)
+	 * Send selected elements backward one level (swap with element below)
+	 * Elements array is already sorted by zIndex (ascending)
 	 */
 	const handleSendBackward = useCallback(() => {
 		if (selectedElementIds.size === 0) return;
 
+		// Process each selected element
 		Array.from(selectedElementIds).forEach((id) => {
-			const element = elements.find((el) => el.id === id);
-			if (element) {
-				updateElement(id, { zIndex: Math.max(0, (element.zIndex || 0) - 1) });
-			}
+			const currentIndex = elements.findIndex((el) => el.id === id);
+			if (currentIndex <= 0) return; // Already at back or not found
+
+			const currentElement = elements[currentIndex];
+			const elementBelow = elements[currentIndex - 1];
+
+			if (!currentElement || !elementBelow) return;
+
+			// Swap zIndex values with element below
+			const currentZ = currentElement.zIndex ?? currentIndex;
+			const belowZ = elementBelow.zIndex ?? currentIndex - 1;
+
+			// Swap: current gets lower, below gets higher
+			updateElement(id, { zIndex: belowZ });
+			updateElement(elementBelow.id, { zIndex: currentZ });
 		});
 	}, [selectedElementIds, elements, updateElement]);
 
 	/**
-	 * Bring selected elements to front (max z-index)
+	 * Bring selected elements to front (highest z-index)
 	 */
 	const handleBringToFront = useCallback(() => {
 		if (selectedElementIds.size === 0) return;
 
 		const maxZ = Math.max(...elements.map((el) => el.zIndex || 0), 0);
 
+		let nextZ = maxZ + 1;
 		Array.from(selectedElementIds).forEach((id) => {
-			updateElement(id, { zIndex: maxZ + 1 });
+			updateElement(id, { zIndex: nextZ });
+			nextZ++;
 		});
 	}, [selectedElementIds, elements, updateElement]);
 
 	/**
-	 * Send selected elements to back (z-index = 0)
+	 * Send selected elements to back (lowest z-index)
 	 */
 	const handleSendToBack = useCallback(() => {
 		if (selectedElementIds.size === 0) return;
 
+		const minZ = Math.min(...elements.map((el) => el.zIndex || 0), 0);
+
+		// Set selected elements to zIndex below the minimum
+		let nextZ = minZ - selectedElementIds.size;
 		Array.from(selectedElementIds).forEach((id) => {
-			updateElement(id, { zIndex: 0 });
+			updateElement(id, { zIndex: nextZ });
+			nextZ++;
 		});
-	}, [selectedElementIds, updateElement]);
+	}, [selectedElementIds, elements, updateElement]);
 
 	/**
 	 * Handle context menu (right-click)
@@ -873,6 +1023,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 					l: "line",
 					a: "arrow",
 					p: "freedraw",
+					k: "laser",
 					t: "text",
 					e: "eraser",
 				};
@@ -881,6 +1032,25 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				if (tool) {
 					setActiveTool(tool);
 					return;
+				}
+
+				// Enter key: Edit selected text element
+				if (e.key === "Enter" && selectedElementIds.size === 1) {
+					const selectedId = Array.from(selectedElementIds)[0];
+					const selectedElement = elements.find((el) => el.id === selectedId);
+					if (selectedElement?.type === "text") {
+						e.preventDefault();
+						const textElement = selectedElement as TextElement;
+						setEditingText({
+							x: textElement.x,
+							y: textElement.y,
+							initialText: textElement.text,
+							initialWidth: textElement.width,
+							initialHeight: textElement.height,
+							elementId: textElement.id,
+						});
+						return;
+					}
 				}
 			}
 
@@ -1057,24 +1227,42 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				return; // Don't process the switch - we just added a point
 			}
 
-			// Don't handle if clicking on existing element (for drag)
-			const clickedOnEmpty = e.target === e.target.getStage();
-
 			switch (activeTool) {
-				case "selection":
-					if (clickedOnEmpty) {
-						clearSelection();
-					} else {
-						// Check if clicked on an element
-						const clickedElement = getElementAtPoint(point, elements);
-						if (clickedElement) {
-							if (!selectedElementIds.has(clickedElement.id)) {
-								setSelectedElementIds(new Set([clickedElement.id]));
-							}
-							setIsDragging(true);
+				case "selection": {
+					// Check what was clicked
+					const clickedOnStage = e.target === e.target.getStage();
+					const targetId = e.target.id?.();
+					const isActualElement =
+						targetId && elements.some((el) => el.id === targetId);
+
+					if (isActualElement) {
+						// Clicked directly on an element - select it and enable dragging
+						if (!selectedElementIds.has(targetId)) {
+							setSelectedElementIds(new Set([targetId]));
 						}
+						setIsDragging(true);
+						break;
+					}
+
+					if (!clickedOnStage) {
+						// Clicked on a Konva shape that's NOT an element (rotation control, resize handle, etc.)
+						// Don't change selection - let the control's own handlers deal with it
+						break;
+					}
+
+					// Clicked on the stage background - use custom hit detection for overlapping elements
+					const clickedElement = getElementAtPoint(point, elements);
+					if (clickedElement) {
+						if (!selectedElementIds.has(clickedElement.id)) {
+							setSelectedElementIds(new Set([clickedElement.id]));
+						}
+						setIsDragging(true);
+					} else {
+						// Clicked on empty canvas - clear selection
+						clearSelection();
 					}
 					break;
+				}
 
 				case "hand":
 					setIsDragging(true);
@@ -1140,6 +1328,13 @@ export function Canvas({ roomId, token }: CanvasProps) {
 						opacity: currentOpacity,
 					});
 					setDrawingElement(newFreedraw);
+					break;
+				}
+
+				case "laser": {
+					// Laser tool - temporary pointer (doesn't persist)
+					setIsDrawing(true);
+					laserPointsRef.current = [[0, 0]];
 					break;
 				}
 
@@ -1229,6 +1424,25 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				return;
 			}
 
+			// Handle laser pointer (temporary drawing)
+			if (activeTool === "laser" && isDrawing && interactionStartPoint) {
+				const dx = point.x - interactionStartPoint.x;
+				const dy = point.y - interactionStartPoint.y;
+
+				laserPointsRef.current.push([dx, dy]);
+
+				// Generate SVG path for laser
+				const pathData = outlineToSvgPath(laserPointsRef.current, {
+					size: currentStrokeWidth * 2,
+					thinning: 0.5,
+					smoothing: 0.5,
+					streamline: 0.5,
+					simulatePressure: true,
+				});
+				setLaserPath(pathData);
+				return;
+			}
+
 			// Handle drawing
 			if (!isDrawing || !drawingElement || !interactionStartPoint) return;
 
@@ -1295,12 +1509,12 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				}
 
 				case "freedraw": {
-					// Add point to freedraw path
+					// Add point to freedraw path (persistent)
 					freedrawPointsRef.current.push([dx, dy]);
 
 					setDrawingElement({
 						...drawingElement,
-						points: [...freedrawPointsRef.current],
+						points: freedrawPointsRef.current,
 					} as FreedrawElement);
 					break;
 				}
@@ -1322,6 +1536,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			altPressed,
 			elements,
 			deleteElements,
+			currentStrokeWidth,
 		],
 	);
 
@@ -1335,29 +1550,55 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	const handleMouseUp = useCallback(() => {
 		// Finalize drawing
 		if (isDrawing && drawingElement) {
-			// Only add if element has size
-			if (
-				Math.abs(drawingElement.width) > 5 ||
-				Math.abs(drawingElement.height) > 5
-			) {
-				// Normalize negative dimensions
-				const finalElement = { ...drawingElement };
-
-				if (finalElement.width < 0) {
-					finalElement.x += finalElement.width;
-					finalElement.width = Math.abs(finalElement.width);
+			// Freedraw: simplified, no pressure calculation
+			if (drawingElement.type === "freedraw") {
+				const freedrawElement = drawingElement as FreedrawElement;
+				if (freedrawPointsRef.current.length > 2) {
+					// Optionally simplify path for network efficiency
+					const simplifiedPoints = simplifyPath(
+						freedrawPointsRef.current,
+						2.0, // epsilon value
+					);
+					freedrawElement.points = simplifiedPoints;
+					// Assign proper zIndex so new elements appear on top
+					freedrawElement.zIndex = getNextZIndex();
+					addElement(freedrawElement);
+					setSelectedElementIds(new Set([freedrawElement.id]));
 				}
-				if (finalElement.height < 0) {
-					finalElement.y += finalElement.height;
-					finalElement.height = Math.abs(finalElement.height);
+			} else {
+				// Other element types: only add if element has size
+				if (
+					Math.abs(drawingElement.width) > 5 ||
+					Math.abs(drawingElement.height) > 5
+				) {
+					// Normalize negative dimensions
+					const finalElement = { ...drawingElement };
+
+					if (finalElement.width < 0) {
+						finalElement.x += finalElement.width;
+						finalElement.width = Math.abs(finalElement.width);
+					}
+					if (finalElement.height < 0) {
+						finalElement.y += finalElement.height;
+						finalElement.height = Math.abs(finalElement.height);
+					}
+
+					// Assign proper zIndex so new elements appear on top
+					finalElement.zIndex = getNextZIndex();
+
+					// Add to Yjs - this syncs to all clients!
+					addElement(finalElement);
+
+					// Select the new element
+					setSelectedElementIds(new Set([finalElement.id]));
 				}
-
-				// Add to Yjs - this syncs to all clients!
-				addElement(finalElement);
-
-				// Select the new element
-				setSelectedElementIds(new Set([finalElement.id]));
 			}
+		}
+
+		// Clear laser path (temporary tool)
+		if (activeTool === "laser") {
+			setLaserPath(null);
+			laserPointsRef.current = [];
 		}
 
 		// Reset state
@@ -1370,9 +1611,6 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		// Clear eraser state
 		isErasingRef.current = false;
 		erasedElementsRef.current.clear();
-
-		// Reset pressure tracking
-		lastPointTimeRef.current = Date.now();
 	}, [
 		isDrawing,
 		drawingElement,
@@ -1381,7 +1619,32 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		setIsDrawing,
 		setIsDragging,
 		setInteractionStartPoint,
+		activeTool,
+		getNextZIndex,
 	]);
+
+	/**
+	 * Handle double-click - Edit text elements
+	 */
+	const handleDoubleClick = useCallback(
+		(e: KonvaEventObject<MouseEvent>) => {
+			const point = getCanvasPoint(e);
+			const clickedElement = getElementAtPoint(point, elements);
+
+			if (clickedElement?.type === "text") {
+				const textElement = clickedElement as TextElement;
+				setEditingText({
+					x: textElement.x,
+					y: textElement.y,
+					initialText: textElement.text,
+					initialWidth: textElement.width,
+					initialHeight: textElement.height,
+					elementId: textElement.id,
+				});
+			}
+		},
+		[getCanvasPoint, elements],
+	);
 
 	/**
 	 * Handle element drag end - Update position in Yjs
@@ -1410,6 +1673,236 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		},
 		[elements, updateElement],
 	);
+
+	/**
+	 * Handle resize start - Store initial element state
+	 */
+	const handleResizeStart = useCallback(
+		(
+			elementId: string,
+			handle: HandlePosition,
+			_e: KonvaEventObject<MouseEvent>,
+		) => {
+			const element = elements.find((el) => el.id === elementId);
+			if (!element) return;
+
+			const stage = stageRef.current;
+			const pos = stage?.getPointerPosition();
+			if (!pos) return;
+
+			setResizingElement({
+				id: elementId,
+				originalX: element.x,
+				originalY: element.y,
+				originalWidth: element.width,
+				originalHeight: element.height,
+				handle,
+				startMouseX: (pos.x - scrollX) / zoom,
+				startMouseY: (pos.y - scrollY) / zoom,
+			});
+		},
+		[elements, scrollX, scrollY, zoom],
+	);
+
+	/**
+	 * Handle resize move - Calculate new dimensions based on handle drag
+	 */
+	const handleResizeMove = useCallback(
+		(
+			elementId: string,
+			handle: HandlePosition,
+			_e: KonvaEventObject<MouseEvent>,
+		) => {
+			if (!resizingElement || resizingElement.id !== elementId) return;
+
+			const stage = stageRef.current;
+			const pos = stage?.getPointerPosition();
+			if (!pos) return;
+
+			const mouseX = (pos.x - scrollX) / zoom;
+			const mouseY = (pos.y - scrollY) / zoom;
+
+			const deltaX = mouseX - resizingElement.startMouseX;
+			const deltaY = mouseY - resizingElement.startMouseY;
+
+			let newX = resizingElement.originalX;
+			let newY = resizingElement.originalY;
+			let newWidth = resizingElement.originalWidth;
+			let newHeight = resizingElement.originalHeight;
+
+			// Calculate new dimensions based on handle position
+			switch (handle) {
+				case "top-left":
+					newX = resizingElement.originalX + deltaX;
+					newY = resizingElement.originalY + deltaY;
+					newWidth = resizingElement.originalWidth - deltaX;
+					newHeight = resizingElement.originalHeight - deltaY;
+					break;
+				case "top-right":
+					newY = resizingElement.originalY + deltaY;
+					newWidth = resizingElement.originalWidth + deltaX;
+					newHeight = resizingElement.originalHeight - deltaY;
+					break;
+				case "bottom-left":
+					newX = resizingElement.originalX + deltaX;
+					newWidth = resizingElement.originalWidth - deltaX;
+					newHeight = resizingElement.originalHeight + deltaY;
+					break;
+				case "bottom-right":
+					newWidth = resizingElement.originalWidth + deltaX;
+					newHeight = resizingElement.originalHeight + deltaY;
+					break;
+				case "top-center":
+					newY = resizingElement.originalY + deltaY;
+					newHeight = resizingElement.originalHeight - deltaY;
+					break;
+				case "bottom-center":
+					newHeight = resizingElement.originalHeight + deltaY;
+					break;
+				case "left-center":
+					newX = resizingElement.originalX + deltaX;
+					newWidth = resizingElement.originalWidth - deltaX;
+					break;
+				case "right-center":
+					newWidth = resizingElement.originalWidth + deltaX;
+					break;
+			}
+
+			// Apply Shift key for aspect ratio lock
+			if (shiftPressed) {
+				const aspectRatio =
+					resizingElement.originalWidth / resizingElement.originalHeight;
+
+				// For corner handles, lock aspect ratio
+				if (
+					handle === "top-left" ||
+					handle === "top-right" ||
+					handle === "bottom-left" ||
+					handle === "bottom-right"
+				) {
+					const newAspect = Math.abs(newWidth / newHeight);
+					if (newAspect > aspectRatio) {
+						// Width is proportionally larger, adjust it
+						newWidth = Math.sign(newWidth) * Math.abs(newHeight) * aspectRatio;
+					} else {
+						// Height is proportionally larger, adjust it
+						newHeight =
+							(Math.sign(newHeight) * Math.abs(newWidth)) / aspectRatio;
+					}
+
+					// Recalculate position for handles that change origin
+					if (handle === "top-left") {
+						newX =
+							resizingElement.originalX +
+							resizingElement.originalWidth -
+							newWidth;
+						newY =
+							resizingElement.originalY +
+							resizingElement.originalHeight -
+							newHeight;
+					} else if (handle === "top-right") {
+						newY =
+							resizingElement.originalY +
+							resizingElement.originalHeight -
+							newHeight;
+					} else if (handle === "bottom-left") {
+						newX =
+							resizingElement.originalX +
+							resizingElement.originalWidth -
+							newWidth;
+					}
+				}
+			}
+
+			// Ensure minimum size
+			const MIN_SIZE = 10;
+			if (newWidth < MIN_SIZE) {
+				if (handle.includes("left")) {
+					newX =
+						resizingElement.originalX +
+						resizingElement.originalWidth -
+						MIN_SIZE;
+				}
+				newWidth = MIN_SIZE;
+			}
+			if (newHeight < MIN_SIZE) {
+				if (handle.includes("top")) {
+					newY =
+						resizingElement.originalY +
+						resizingElement.originalHeight -
+						MIN_SIZE;
+				}
+				newHeight = MIN_SIZE;
+			}
+
+			// Update element in real-time
+			updateElement(elementId, {
+				x: newX,
+				y: newY,
+				width: newWidth,
+				height: newHeight,
+			});
+		},
+		[resizingElement, scrollX, scrollY, zoom, shiftPressed, updateElement],
+	);
+
+	/**
+	 * Handle resize end - Finalize the resize operation
+	 */
+	const handleResizeEnd = useCallback((_elementId: string) => {
+		setResizingElement(null);
+	}, []);
+
+	/**
+	 * Handle 90° rotation - Rotate element clockwise by 90 degrees
+	 */
+	const handleRotate90 = useCallback(
+		(elementId: string) => {
+			const element = elements.find((el) => el.id === elementId);
+			if (!element) return;
+
+			// Rotate by 90° clockwise
+			const newAngle = (element.angle + 90) % 360;
+			updateElement(elementId, { angle: newAngle });
+		},
+		[elements, updateElement],
+	);
+
+	/**
+	 * Handle rotation start - Begin arbitrary rotation
+	 */
+	const handleRotationStart = useCallback(
+		(elementId: string, _e: KonvaEventObject<MouseEvent>) => {
+			const element = elements.find((el) => el.id === elementId);
+			if (!element) return;
+
+			setRotatingElement({
+				id: elementId,
+				originalAngle: element.angle,
+			});
+		},
+		[elements],
+	);
+
+	/**
+	 * Handle rotation move - Update element angle during drag
+	 */
+	const handleRotationMove = useCallback(
+		(elementId: string, angle: number, _e: KonvaEventObject<MouseEvent>) => {
+			if (!rotatingElement || rotatingElement.id !== elementId) return;
+
+			// Update element angle in real-time
+			updateElement(elementId, { angle });
+		},
+		[rotatingElement, updateElement],
+	);
+
+	/**
+	 * Handle rotation end - Finalize the rotation operation
+	 */
+	const handleRotationEnd = useCallback((_elementId: string) => {
+		setRotatingElement(null);
+	}, []);
 
 	/**
 	 * Handle mouse leave - Clear cursor from awareness
@@ -1474,6 +1967,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				onMouseMove={handleMouseMove}
 				onMouseUp={handleMouseUp}
 				onMouseLeave={handleMouseLeave}
+				onDblClick={handleDoubleClick}
 				style={{
 					cursor:
 						activeTool === "hand"
@@ -1501,6 +1995,70 @@ export function Canvas({ roomId, token }: CanvasProps) {
 					{/* Render element being drawn */}
 					{drawingElement &&
 						renderElement(drawingElement, false, false, true, () => {})}
+
+					{/* Render laser path (temporary) */}
+					{laserPath && activeTool === "laser" && interactionStartPoint && (
+						<Path
+							data={laserPath}
+							x={interactionStartPoint.x}
+							y={interactionStartPoint.y}
+							fill={currentStrokeColor}
+							opacity={0.6}
+							listening={false}
+						/>
+					)}
+
+					{/* Render resize handles for selected elements (not lines/arrows) */}
+					{activeTool === "selection" &&
+						elements
+							.filter(
+								(element) =>
+									selectedElementIds.has(element.id) &&
+									element.type !== "line" &&
+									element.type !== "arrow" &&
+									element.type !== "freedraw",
+							)
+							.map((element) => (
+								<ResizeHandles
+									key={`resize-${element.id}`}
+									x={element.x}
+									y={element.y}
+									width={element.width}
+									height={element.height}
+									elementId={element.id}
+									onResizeStart={handleResizeStart}
+									onResizeMove={handleResizeMove}
+									onResizeEnd={handleResizeEnd}
+								/>
+							))}
+
+					{/* Render rotation controls for selected elements */}
+					{activeTool === "selection" &&
+						elements
+							.filter(
+								(element) =>
+									selectedElementIds.has(element.id) &&
+									element.type !== "line" &&
+									element.type !== "arrow" &&
+									element.type !== "freedraw",
+							)
+							.map((element) => (
+								<RotationControls
+									key={`rotate-${element.id}`}
+									x={element.x}
+									y={element.y}
+									width={element.width}
+									height={element.height}
+									elementId={element.id}
+									zoom={zoom}
+									scrollX={scrollX}
+									scrollY={scrollY}
+									onRotate90={handleRotate90}
+									onRotationStart={handleRotationStart}
+									onRotationMove={handleRotationMove}
+									onRotationEnd={handleRotationEnd}
+								/>
+							))}
 				</Layer>
 			</Stage>
 

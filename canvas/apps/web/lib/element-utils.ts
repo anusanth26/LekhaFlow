@@ -89,6 +89,7 @@ function createBaseElement(
 		updated: Date.now(),
 		link: null,
 		locked: options.locked ?? DEFAULT_ELEMENT_PROPS.locked,
+		zIndex: options.zIndex ?? 0,
 	};
 }
 

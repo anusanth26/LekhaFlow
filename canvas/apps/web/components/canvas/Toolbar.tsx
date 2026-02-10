@@ -8,6 +8,7 @@
 
 "use client";
 
+import type { Tool } from "@repo/common";
 import {
 	ArrowUpRight,
 	Circle,
@@ -17,23 +18,12 @@ import {
 	Minus,
 	MousePointer2,
 	Pencil,
+	Pointer,
 	Square,
 	Type,
 } from "lucide-react";
 import React from "react";
 import { useCanvasStore } from "../../store/canvas-store";
-
-type Tool =
-	| "selection"
-	| "rectangle"
-	| "ellipse"
-	| "diamond"
-	| "line"
-	| "arrow"
-	| "freedraw"
-	| "text"
-	| "eraser"
-	| "hand";
 
 interface ToolDefinition {
 	id: Tool;
@@ -78,8 +68,14 @@ const TOOLS: ToolDefinition[] = [
 	{
 		id: "freedraw",
 		icon: <Pencil size={18} />,
-		label: "Freedraw",
+		label: "Freehand",
 		shortcut: "P",
+	},
+	{
+		id: "laser",
+		icon: <Pointer size={18} />,
+		label: "Laser",
+		shortcut: "K",
 	},
 	{ id: "text", icon: <Type size={18} />, label: "Text", shortcut: "T" },
 	{ id: "eraser", icon: <Eraser size={18} />, label: "Eraser", shortcut: "E" },
@@ -101,7 +97,7 @@ export function Toolbar() {
 								<div className="w-8 h-px bg-gray-200 mx-auto my-1" />
 							)}
 							{/* Separator before eraser */}
-							{index === 8 && (
+							{index === 9 && (
 								<div className="w-8 h-px bg-gray-200 mx-auto my-1" />
 							)}
 
