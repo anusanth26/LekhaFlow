@@ -1,1 +1,1 @@
-{"root":["./src/env.ts","./src/index.ts","./src/controller/auth.ts","./src/error/error.ts","./src/interface/auth.ts","./src/middleware.ts/auth.ts","./src/routes/v1.ts"],"version":"5.9.2"}
+{"root":["./src/env.ts","./src/index.ts","./src/supabase.server.ts","./src/controller/auth.ts","./src/controller/canvas.test.ts","./src/controller/canvas.ts","./src/error/error.ts","./src/middleware/auth.ts","./src/routes/auth.ts","./src/routes/canvas.ts","./src/routes/index.ts","./src/services/canvas.ts"],"version":"5.9.2"}

@@ -1,8 +1,8 @@
 import { HttpError } from "@repo/http-core";
-import { supabase } from "@repo/supabase";
 import type { User } from "@supabase/supabase-js";
 import type { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
+import { createServiceClient } from "../supabase.server";
 
 declare global {
 	namespace Express {
@@ -32,7 +32,7 @@ export const authMiddleware = async (
 		const {
 			data: { user },
 			error,
-		} = await supabase.auth.getUser(token);
+		} = await createServiceClient().auth.getUser(token);
 
 		if (error || !user) {
 			throw new HttpError("Invalid or Expired Token", StatusCodes.UNAUTHORIZED);

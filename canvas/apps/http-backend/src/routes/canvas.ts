@@ -1,7 +1,17 @@
 import type { Router as RouterType } from "express";
 import { Router } from "express";
-import { createCanvas } from "../controller/canvas";
+import {
+	createCanvas,
+	deleteCanvas,
+	getCanvas,
+	getCanvases,
+	updateCanvas,
+} from "../controller/canvas";
 import { authMiddleware } from "../middleware/auth";
 export const canvasRouter: RouterType = Router();
 
+canvasRouter.get("/", authMiddleware, getCanvases);
+canvasRouter.get("/:roomId", authMiddleware, getCanvas);
 canvasRouter.post("/create-canvas", authMiddleware, createCanvas);
+canvasRouter.put("/:roomId", authMiddleware, updateCanvas);
+canvasRouter.delete("/:roomId", authMiddleware, deleteCanvas);

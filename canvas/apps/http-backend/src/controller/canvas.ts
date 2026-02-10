@@ -1,10 +1,17 @@
-import { CreateCanvasSchema } from "@repo/common";
+import { CreateCanvasSchema, UpdateCanvasSchema } from "@repo/common";
 import { HttpError, JSONResponse } from "@repo/http-core";
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { createCanvasService } from "../services/canvas.js";
+import {
+	createCanvasService,
+	deleteCanvasService,
+	getCanvasesService,
+	getCanvasService,
+	updateCanvasService,
+} from "../services/canvas.js";
 
 export const createCanvas = async (req: Request, res: Response) => {
+	console.log("Request Body:", req.body);
 	const parsedData = CreateCanvasSchema.safeParse(req.body);
 
 	if (!parsedData.success) {
@@ -31,4 +38,76 @@ export const createCanvas = async (req: Request, res: Response) => {
 		roomId: newCanvas.id,
 		slug: newCanvas.slug,
 	});
+};
+
+export const updateCanvas = async (req: Request, res: Response) => {
+	const { roomId } = req.params;
+	const parsedData = UpdateCanvasSchema.safeParse(req.body);
+
+	if (!parsedData.success) {
+		throw new HttpError(
+			"Validation Failed: " +
+				(parsedData.error.issues[0]?.message ?? "Invalid input"),
+			StatusCodes.BAD_REQUEST,
+		);
+	}
+
+	if (!roomId || typeof roomId !== "string") {
+		throw new HttpError("Room ID is required", StatusCodes.BAD_REQUEST);
+	}
+
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+	const userId = req.user.id;
+
+	const { name, data } = parsedData.data;
+
+	await updateCanvasService(roomId, { name, data }, userId);
+
+	return JSONResponse(res, StatusCodes.OK, "Canvas updated successfully");
+};
+
+export const getCanvases = async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+
+	const userId = req.user.id;
+	const canvases = await getCanvasesService(userId);
+
+	return JSONResponse(res, StatusCodes.OK, "Canvases retrieved successfully", {
+		canvases,
+	});
+};
+
+export const getCanvas = async (req: Request, res: Response) => {
+	const roomId = req.params.roomId as string;
+	if (!roomId) {
+		throw new HttpError("Room ID is required", StatusCodes.BAD_REQUEST);
+	}
+
+	const canvas = await getCanvasService(roomId);
+	if (!canvas) {
+		throw new HttpError("Canvas not found", StatusCodes.NOT_FOUND);
+	}
+
+	return JSONResponse(res, StatusCodes.OK, "Canvas retrieved successfully", {
+		canvas,
+	});
+};
+
+export const deleteCanvas = async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+
+	const roomId = req.params.roomId as string;
+	if (!roomId) {
+		throw new HttpError("Room ID is required", StatusCodes.BAD_REQUEST);
+	}
+
+	await deleteCanvasService(roomId, req.user.id);
+
+	return JSONResponse(res, StatusCodes.OK, "Canvas deleted successfully");
 };
