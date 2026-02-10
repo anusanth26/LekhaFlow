@@ -624,8 +624,14 @@ function isPointNearFreedraw(
 ): boolean {
 	const { x, y, points, strokeWidth } = element;
 
-	for (const [px, py] of points) {
-		const dist = Math.hypot(point.x - (x + px), point.y - (y + py));
+	// Check if point is near any line segment in the freedraw path
+	for (let i = 0; i < points.length - 1; i++) {
+		// biome-ignore lint/style/noNonNullAssertion: Points are guaranteed to exist by loop bounds
+		const p1 = { x: x + points[i]![0], y: y + points[i]![1] };
+		// biome-ignore lint/style/noNonNullAssertion: Points are guaranteed to exist by loop bounds
+		const p2 = { x: x + points[i + 1]![0], y: y + points[i + 1]![1] };
+
+		const dist = pointToSegmentDistance(point, p1, p2);
 		if (dist <= threshold + strokeWidth / 2) {
 			return true;
 		}
