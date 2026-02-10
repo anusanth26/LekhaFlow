@@ -318,11 +318,15 @@ export function createText(
 	const lines = text.split("\n");
 	const maxLineLength = Math.max(...lines.map((l) => l.length));
 
+	// Use provided dimensions or calculate based on text content
+	const width = options.width ?? maxLineLength * fontSize * 0.6;
+	const height = options.height ?? lines.length * fontSize * 1.2;
+
 	return {
 		...createBaseElement("text", x, y, options),
 		type: "text",
-		width: maxLineLength * fontSize * 0.6,
-		height: lines.length * fontSize * 1.2,
+		width,
+		height,
 		text,
 		fontSize,
 		fontFamily: options.fontFamily ?? 1,
@@ -498,6 +502,9 @@ export function isPointInElement(
 		case "ellipse":
 			return isPointInEllipse(point, element, threshold);
 
+		case "diamond":
+			return isPointInDiamond(point, element, threshold);
+
 		case "line":
 		case "arrow":
 			return isPointNearLine(
@@ -554,6 +561,30 @@ function isPointInEllipse(
 	const dy = point.y - cy;
 
 	return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1;
+}
+
+/**
+ * Check if point is in diamond (rhombus)
+ *
+ * A diamond is defined by 4 vertices: top, right, bottom, left
+ * Uses the Manhattan distance formula normalized by half-dimensions
+ * |dx|/(w/2) + |dy|/(h/2) <= 1
+ */
+function isPointInDiamond(
+	point: Point,
+	element: CanvasElement,
+	threshold: number,
+): boolean {
+	const cx = element.x + element.width / 2;
+	const cy = element.y + element.height / 2;
+	const halfWidth = Math.abs(element.width) / 2 + threshold;
+	const halfHeight = Math.abs(element.height) / 2 + threshold;
+
+	const dx = Math.abs(point.x - cx);
+	const dy = Math.abs(point.y - cy);
+
+	// Point is inside diamond if normalized Manhattan distance <= 1
+	return dx / halfWidth + dy / halfHeight <= 1;
 }
 
 /**
