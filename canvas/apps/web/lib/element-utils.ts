@@ -33,6 +33,15 @@ import { v4 as uuidv4 } from "uuid";
 export { DEFAULT_ELEMENT_PROPS };
 
 // ============================================================================
+// TYPES
+// ============================================================================
+
+export interface ShapeModifiers {
+	shift?: boolean;
+	alt?: boolean;
+}
+
+// ============================================================================
 // ELEMENT CREATION
 // ============================================================================
 
@@ -118,6 +127,95 @@ export function createEllipse(
 		width,
 		height,
 	} as EllipseElement;
+}
+
+/**
+ * Create a diamond element
+ */
+export function createDiamond(
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	options: Partial<CanvasElement> = {},
+): CanvasElement {
+	return {
+		...createBaseElement("diamond", x, y, options),
+		type: "diamond",
+		width,
+		height,
+	} as CanvasElement;
+}
+
+/**
+ * Create a shape (rectangle, ellipse, or diamond) with modifiers
+ *
+ * @param type - Shape type
+ * @param x - X position
+ * @param y - Y position
+ * @param width - Width
+ * @param height - Height
+ * @param modifiers - Shift (square/circle) and Alt (center origin)
+ * @param options - Element options
+ */
+export function createShape(
+	type: "rectangle" | "ellipse" | "diamond",
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	modifiers: ShapeModifiers,
+	options: Partial<CanvasElement> = {},
+): CanvasElement {
+	let adjustedWidth = width;
+	let adjustedHeight = height;
+	let adjustedX = x;
+	let adjustedY = y;
+
+	// Shift: Make square/circle (equal dimensions)
+	if (modifiers.shift) {
+		const size = Math.max(Math.abs(width), Math.abs(height));
+		adjustedWidth = width < 0 ? -size : size;
+		adjustedHeight = height < 0 ? -size : size;
+	}
+
+	// Alt: Draw from center
+	if (modifiers.alt) {
+		adjustedX = x - adjustedWidth;
+		adjustedY = y - adjustedHeight;
+		adjustedWidth = adjustedWidth * 2;
+		adjustedHeight = adjustedHeight * 2;
+	}
+
+	switch (type) {
+		case "rectangle":
+			return createRectangle(
+				adjustedX,
+				adjustedY,
+				adjustedWidth,
+				adjustedHeight,
+				// biome-ignore lint/suspicious/noExplicitAny: options is a partial of CanvasElement union, safe to pass to specific creator
+				options as any,
+			);
+		case "ellipse":
+			return createEllipse(
+				adjustedX,
+				adjustedY,
+				adjustedWidth,
+				adjustedHeight,
+				// biome-ignore lint/suspicious/noExplicitAny: options is a partial of CanvasElement union, safe to pass to specific creator
+				options as any,
+			);
+		case "diamond":
+			return createDiamond(
+				adjustedX,
+				adjustedY,
+				adjustedWidth,
+				adjustedHeight,
+				// biome-ignore lint/suspicious/noExplicitAny: options is a partial of CanvasElement union, safe to pass to specific creator
+				options as any,
+			);
+	}
 }
 
 /**

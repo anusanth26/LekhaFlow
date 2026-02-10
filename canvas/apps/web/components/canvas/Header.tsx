@@ -29,6 +29,7 @@ import {
 	X,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase.client";
 import {
 	useCanvasStore,
 	useCollaboratorsArray,
@@ -357,30 +358,121 @@ function ShareModal({ isOpen, onClose, roomId }: ShareModalProps) {
 
 export function HeaderLeft() {
 	const [menuOpen, setMenuOpen] = useState(false);
-	const [docName, setDocName] = useState("");
+	const [canvasName, setCanvasName] = useState("");
+	const [roomId, setRoomId] = useState("");
+	const [loading, setLoading] = useState(true);
+	const [saving, setSaving] = useState(false);
+	const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+
+	const HTTP_URL = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8000";
+
+	// Format date in a friendly way
+	const formatDate = (dateStr: string) => {
+		const date = new Date(dateStr);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / (1000 * 60));
+		const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+		if (diffMins < 1) return "Just now";
+		if (diffMins < 60) return `${diffMins}m ago`;
+		if (diffHours < 24) return `${diffHours}h ago`;
+		if (diffDays === 1) return "Yesterday";
+		if (diffDays < 7) return `${diffDays}d ago`;
+		return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+	};
 
 	useEffect(() => {
-		const date = new Date().toLocaleDateString("en-US", {
-			month: "short",
-			day: "numeric",
-		});
-		setDocName(`Untitled — ${date}`);
-	}, []);
+		// Fetch session token and canvas data
+		async function init() {
+			// Get auth token
+			const {
+				data: { session },
+			} = await supabase.auth.getSession();
+
+			// Get roomId from URL
+			const url = window.location.pathname;
+			const match = url.match(/canvas\/([a-zA-Z0-9-]+)/);
+			const id = match?.[1] ?? "";
+			setRoomId(id);
+			if (!id || !session) {
+				setLoading(false);
+				return;
+			}
+
+			// Fetch canvas data
+			try {
+				const res = await fetch(`${HTTP_URL}/api/v1/canvas/${id}`, {
+					headers: {
+						Authorization: `Bearer ${session.access_token}`,
+					},
+				});
+				if (res.ok) {
+					const json = await res.json();
+					const canvas = json?.data?.canvas || json?.canvas;
+					setCanvasName(canvas?.name || "");
+					setUpdatedAt(canvas?.updated_at || null);
+				}
+			} catch {}
+			setLoading(false);
+		}
+		init();
+	}, [HTTP_URL]);
+
+	const handleBlur = async () => {
+		if (!roomId || !canvasName) return;
+
+		// Get fresh session token
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
+		if (!session) return;
+
+		setSaving(true);
+		try {
+			await fetch(`${HTTP_URL}/api/v1/canvas/${roomId}`, {
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${session.access_token}`,
+				},
+				body: JSON.stringify({ name: canvasName }),
+			});
+			// Update the timestamp after saving
+			setUpdatedAt(new Date().toISOString());
+		} catch (err) {
+			console.error("Failed to save canvas name:", err);
+		} finally {
+			setSaving(false);
+		}
+	};
 
 	return (
 		<>
 			{/* Document Title - Left Side */}
 			<div className="absolute top-4 left-20 z-50 flex items-center gap-3">
-				<div className="glass-card-elevated rounded-[14px] flex items-center gap-3 px-5 py-2.5">
-					{/* Color indicator */}
-					<div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 shadow-[0_2px_8px_rgba(139,92,246,0.4)]" />
-					<input
-						type="text"
-						value={docName}
-						onChange={(e) => setDocName(e.target.value)}
-						className="text-sm font-semibold text-gray-800 bg-transparent border-none outline-none min-w-[140px] max-w-[220px]"
-						placeholder="Untitled"
-					/>
+				<div className="glass-card-elevated rounded-[14px] flex flex-col gap-0.5 px-5 py-2">
+					<div className="flex items-center gap-3">
+						{/* Color indicator */}
+						<div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 shadow-[0_2px_8px_rgba(139,92,246,0.4)]" />
+						<input
+							type="text"
+							value={canvasName}
+							onChange={(e) => setCanvasName(e.target.value)}
+							onBlur={handleBlur}
+							className="text-sm font-semibold text-gray-800 bg-transparent border-none outline-none min-w-[140px] max-w-[220px] placeholder:text-gray-300 placeholder:font-normal"
+							placeholder="Untitled Canvas"
+							disabled={loading}
+						/>
+						{saving && <span className="text-xs text-gray-400">Saving...</span>}
+					</div>
+					{/* Date display */}
+					{updatedAt && (
+						<span className="text-[11px] text-gray-400 ml-[22px]">
+							Last edited {formatDate(updatedAt)}
+						</span>
+					)}
 				</div>
 			</div>
 

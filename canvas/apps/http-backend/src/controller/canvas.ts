@@ -56,9 +56,14 @@ export const updateCanvas = async (req: Request, res: Response) => {
 		throw new HttpError("Room ID is required", StatusCodes.BAD_REQUEST);
 	}
 
-	const { data } = parsedData.data;
+	if (!req.user) {
+		throw new HttpError("Unauthorized", StatusCodes.UNAUTHORIZED);
+	}
+	const userId = req.user.id;
 
-	await updateCanvasService(roomId, data);
+	const { name, data } = parsedData.data;
+
+	await updateCanvasService(roomId, { name, data }, userId);
 
 	return JSONResponse(res, StatusCodes.OK, "Canvas updated successfully");
 };

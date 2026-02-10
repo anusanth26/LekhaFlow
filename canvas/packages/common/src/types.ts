@@ -21,7 +21,8 @@ export type SigninType = z.infer<typeof SigninSchema>;
 export type CreateCanvasType = z.infer<typeof CreateCanvasSchema>;
 
 export const UpdateCanvasSchema = z.object({
-	data: z.string(),
+	name: z.string().min(1).max(50).optional(),
+	data: z.string().optional(),
 });
 
 export type UpdateCanvasType = z.infer<typeof UpdateCanvasSchema>;
