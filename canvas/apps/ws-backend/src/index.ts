@@ -13,6 +13,73 @@ const PORT = parseInt(serverEnv.WS_PORT, 10);
 const server = Server.configure({
 	port: PORT,
 
+	onAuthenticate: async (data) => {
+		const { token, documentName } = data;
+
+		console.log("[Hocuspocus] Auth attempt for document:", documentName);
+		console.log("[Hocuspocus] Token present:", !!token);
+
+		if (!token) {
+			console.error("[Hocuspocus] No token provided");
+			throw new Error("Unauthorized: No token provided");
+		}
+
+		console.log("[Hocuspocus] Token preview:", `${token.substring(0, 30)}...`);
+
+		const {
+			data: { user },
+			error,
+		} = await supabase.auth.getUser(token);
+
+		console.log(
+			"[Hocuspocus] Supabase auth result - User:",
+			!!user,
+			"Error:",
+			error?.message,
+		);
+
+		if (error || !user) {
+			console.error("[Hocuspocus] Auth failed:", error?.message || "No user");
+			throw new Error("Unauthorized: Invalid token");
+		}
+
+		console.log("[Hocuspocus] Auth successful for user:", user.email);
+
+		// Track that this user accessed this canvas (for shared canvas dashboard)
+		// Use upsert-like logic: insert only if no recent entry exists
+		try {
+			// Check for existing recent access log (within last hour to avoid spam)
+			const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+			const { data: existingLog } = await supabase
+				.from("activity_logs")
+				.select("id")
+				.eq("canvas_id", documentName)
+				.eq("user_id", user.id)
+				.eq("action", "accessed")
+				.gte("created_at", oneHourAgo)
+				.maybeSingle();
+
+			if (!existingLog) {
+				await supabase.from("activity_logs").insert({
+					canvas_id: documentName,
+					user_id: user.id,
+					action: "accessed",
+					details: null,
+				});
+			}
+		} catch (e) {
+			// Non-critical — don't block auth if activity log fails
+			console.warn("[Hocuspocus] Failed to log access:", e);
+		}
+
+		return {
+			user: {
+				id: user.id,
+				email: user.email,
+			},
+		};
+	},
+
 	extensions: [
 		new Logger(),
 		new Database({
@@ -65,7 +132,11 @@ const server = Server.configure({
 						);
 						return new Uint8Array(buffer);
 					} catch (e) {
-						console.error("[Hocuspocus] Failed to decode hex:", e);
+						console.error(
+							"[Hocuspocus] Failed to decode hex, starting fresh:",
+							e,
+						);
+						// Return null to start with empty document instead of failing
 						return null;
 					}
 				}
@@ -144,59 +215,9 @@ const server = Server.configure({
 			},
 		}),
 	],
-
-	async onAuthenticate(data) {
-		const { token, documentName } = data;
-
-		if (!token) {
-			throw new Error("Unauthorized: No token provided");
-		}
-
-		const {
-			data: { user },
-			error,
-		} = await supabase.auth.getUser(token);
-
-		if (error || !user) {
-			throw new Error("Unauthorized: Invalid token");
-		}
-
-		// Track that this user accessed this canvas (for shared canvas dashboard)
-		// Use upsert-like logic: insert only if no recent entry exists
-		try {
-			// Check for existing recent access log (within last hour to avoid spam)
-			const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-			const { data: existingLog } = await supabase
-				.from("activity_logs")
-				.select("id")
-				.eq("canvas_id", documentName)
-				.eq("user_id", user.id)
-				.eq("action", "accessed")
-				.gte("created_at", oneHourAgo)
-				.maybeSingle();
-
-			if (!existingLog) {
-				await supabase.from("activity_logs").insert({
-					canvas_id: documentName,
-					user_id: user.id,
-					action: "accessed",
-					details: null,
-				});
-			}
-		} catch (e) {
-			// Non-critical — don't block auth if activity log fails
-			console.warn("[Hocuspocus] Failed to log access:", e);
-		}
-
-		return {
-			user: {
-				id: user.id,
-				email: user.email,
-			},
-		};
-	},
 });
 
 server.listen().then(() => {
 	console.log(`Hocuspocus server running on port ${PORT}`);
+	console.log("Auth logging enabled for debugging");
 });

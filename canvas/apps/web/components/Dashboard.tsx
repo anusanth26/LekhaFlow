@@ -1,5 +1,4 @@
 import { File, Grid, List, Plus, Share2, Trash2 } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.client";
@@ -194,27 +193,29 @@ export function Dashboard() {
 						>
 							{/* Thumbnail */}
 							<div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
-								{/* Grid pattern */}
-								<div
-									className="absolute inset-0 opacity-[0.4]"
-									style={{
-										backgroundImage:
-											"radial-gradient(circle, #d1d5db 1px, transparent 1px)",
-										backgroundSize: "16px 16px",
-									}}
-								/>
-
 								{canvas.thumbnail_url ? (
-									<Image
+									/* biome-ignore lint/performance/noImgElement: Dynamic canvas thumbnails from external URLs */
+									<img
 										src={canvas.thumbnail_url}
-										alt={canvas.name}
-										fill
+										alt={canvas.name || "Canvas preview"}
 										className="w-full h-full object-cover"
+										loading="lazy"
 									/>
 								) : (
-									<div className="w-full h-full flex items-center justify-center">
-										<File className="w-10 h-10 text-gray-300" />
-									</div>
+									<>
+										{/* Grid pattern fallback */}
+										<div
+											className="absolute inset-0 opacity-[0.4]"
+											style={{
+												backgroundImage:
+													"radial-gradient(circle, #d1d5db 1px, transparent 1px)",
+												backgroundSize: "16px 16px",
+											}}
+										/>
+										<div className="w-full h-full flex items-center justify-center">
+											<File className="w-10 h-10 text-gray-300" />
+										</div>
+									</>
 								)}
 
 								{/* Hover overlay */}
@@ -271,8 +272,17 @@ export function Dashboard() {
 							className="flex items-center justify-between p-4 hover:bg-violet-50/50 cursor-pointer group transition-colors"
 						>
 							<div className="flex items-center gap-4 min-w-0">
-								<div className="h-10 w-10 bg-violet-100 rounded-lg flex-shrink-0 flex items-center justify-center">
-									<File size={18} className="text-violet-500" />
+								<div className="h-10 w-14 bg-gray-50 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
+									{canvas.thumbnail_url ? (
+										/* biome-ignore lint/performance/noImgElement: Dynamic canvas thumbnails from external URLs */ <img
+											src={canvas.thumbnail_url}
+											alt={canvas.name || "Canvas preview"}
+											className="w-full h-full object-cover"
+											loading="lazy"
+										/>
+									) : (
+										<File size={18} className="text-violet-500" />
+									)}
 								</div>
 								<div className="min-w-0">
 									<div className="flex items-center gap-1.5">

@@ -104,12 +104,14 @@ export const getCanvasService = async (
 
 export const updateCanvasService = async (
 	canvasId: string,
-	update: { name?: string; data?: string },
+	update: { name?: string; data?: string; thumbnail_url?: string },
 	userId: string,
 ): Promise<void> => {
 	const updateFields: Record<string, string | undefined> = {};
 	if (update.name !== undefined) updateFields.name = update.name;
 	if (update.data !== undefined) updateFields.data = update.data;
+	if (update.thumbnail_url !== undefined)
+		updateFields.thumbnail_url = update.thumbnail_url;
 
 	const { error } = await serviceClient
 		.from("canvases")

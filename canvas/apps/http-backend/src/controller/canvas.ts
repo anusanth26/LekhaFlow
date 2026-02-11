@@ -61,9 +61,9 @@ export const updateCanvas = async (req: Request, res: Response) => {
 	}
 	const userId = req.user.id;
 
-	const { name, data } = parsedData.data;
+	const { name, data, thumbnail_url } = parsedData.data;
 
-	await updateCanvasService(roomId, { name, data }, userId);
+	await updateCanvasService(roomId, { name, data, thumbnail_url }, userId);
 
 	return JSONResponse(res, StatusCodes.OK, "Canvas updated successfully");
 };
