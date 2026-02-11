@@ -43,9 +43,10 @@ interface SidebarMenuProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onClearCanvas?: () => void;
+	onExport?: (format: "png" | "svg" | "json") => void;
 }
 
-function SidebarMenu({ isOpen, onClose, onClearCanvas }: SidebarMenuProps) {
+function SidebarMenu({ isOpen, onClose, onClearCanvas, onExport }: SidebarMenuProps) {
 	return (
 		<>
 			{/* Backdrop */}
@@ -113,9 +114,9 @@ function SidebarMenu({ isOpen, onClose, onClearCanvas }: SidebarMenuProps) {
 							Export
 						</p>
 						<div className="flex flex-col gap-1">
-							<MenuItem icon={<Image />} label="Export as PNG" />
-							<MenuItem icon={<FileText />} label="Export as SVG" />
-							<MenuItem icon={<Download />} label="Export as JSON" />
+							<MenuItem icon={<Image />} label="Export as PNG" onClick={() => { onExport?.("png"); onClose(); }} />
+							<MenuItem icon={<FileText />} label="Export as SVG" onClick={() => { onExport?.("svg"); onClose(); }} />
+							<MenuItem icon={<Download />} label="Export as JSON" onClick={() => { onExport?.("json"); onClose(); }} />
 						</div>
 					</div>
 
@@ -143,13 +144,6 @@ function SidebarMenu({ isOpen, onClose, onClearCanvas }: SidebarMenuProps) {
 				{/* Footer */}
 				<div className="p-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
 					<div className="flex gap-2">
-						<button
-							type="button"
-							className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-[10px] cursor-pointer transition-all hover:bg-gray-50 hover:border-violet-300 hover:text-violet-500"
-						>
-							<HelpCircle size={16} />
-							Help
-						</button>
 						<button
 							type="button"
 							className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-[10px] cursor-pointer transition-all hover:bg-gray-50 hover:border-violet-300 hover:text-violet-500"
@@ -365,9 +359,10 @@ function ShareModal({ isOpen, onClose, roomId }: ShareModalProps) {
 
 interface HeaderLeftProps {
 	onClearCanvas?: () => void;
+	onExport?: (format: "png" | "svg" | "json") => void;
 }
 
-export function HeaderLeft({ onClearCanvas }: HeaderLeftProps) {
+export function HeaderLeft({ onClearCanvas, onExport }: HeaderLeftProps) {
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [canvasName, setCanvasName] = useState("");
 	const [roomId, setRoomId] = useState("");
@@ -461,42 +456,83 @@ export function HeaderLeft({ onClearCanvas }: HeaderLeftProps) {
 
 	return (
 		<>
-			{/* Document Title - Left Side */}
-			<div className="absolute top-4 left-20 z-50 flex items-center gap-3">
-				<div className="glass-card-elevated rounded-[14px] flex flex-col gap-0.5 px-5 py-2">
-					<div className="flex items-center gap-3">
-						{/* Color indicator */}
-						<div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 shadow-[0_2px_8px_rgba(139,92,246,0.4)]" />
-						<input
-							type="text"
-							value={canvasName}
-							onChange={(e) => setCanvasName(e.target.value)}
-							onBlur={handleBlur}
-							className="text-sm font-semibold text-gray-800 bg-transparent border-none outline-none min-w-[140px] max-w-[220px] placeholder:text-gray-300 placeholder:font-normal"
-							placeholder="Untitled Canvas"
-							disabled={loading}
-						/>
-						{saving && <span className="text-xs text-gray-400">Saving...</span>}
-					</div>
-					{/* Date display */}
-					{updatedAt && (
-						<span className="text-[11px] text-gray-400 ml-[22px]">
-							Last edited {formatDate(updatedAt)}
-						</span>
-					)}
-				</div>
-			</div>
-
-			{/* Hamburger Menu Button */}
-			<div className="absolute top-[120px] right-4 z-50">
+			{/* Hamburger Menu Button - Top Left */}
+			<div className="absolute top-6 left-6 z-[var(--z-toolbar)]">
 				<button
 					type="button"
 					onClick={() => setMenuOpen(true)}
 					title="Menu"
-					className="glass-card-elevated rounded-[14px] px-3 py-3 cursor-pointer flex items-center gap-2 border-none transition-all hover:bg-gray-50 hover:border-violet-300"
+					className="glass-card-elevated w-10 h-10 rounded-lg cursor-pointer flex items-center justify-center border-none transition-all hover:bg-gray-50"
+					style={{
+						borderRadius: "var(--radius-md)",
+						boxShadow: "var(--shadow-md)",
+						animation: "fade-in 0.3s ease-out, scale-in 0.3s ease-out",
+					}}
 				>
-					<Menu size={20} className="text-violet-500" />
-					<span className="text-[13px] font-semibold text-gray-700">Menu</span>
+					<Menu size={20} className="text-gray-600" />
+				</button>
+			</div>
+
+			{/* Canvas Name - Next to Menu Button */}
+			<div
+				className="absolute top-6 z-[var(--z-toolbar)]"
+				style={{
+					left: "calc(24px + 40px + 12px)", // 24px (left padding) + 40px (menu button width) + 12px (gap)
+					animation: "fade-in 0.3s ease-out 0.05s backwards",
+				}}
+			>
+				<div className="glass-card-elevated px-4 py-2 flex items-center gap-2 min-w-[200px] max-w-[400px]">
+					{loading ? (
+						<div className="flex items-center gap-2 text-gray-400">
+							<div className="w-4 h-4 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin" />
+							<span className="text-sm">Loading...</span>
+						</div>
+					) : (
+						<>
+							<input
+								type="text"
+								value={canvasName}
+								onChange={(e) => setCanvasName(e.target.value)}
+								onBlur={handleBlur}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.currentTarget.blur();
+									}
+								}}
+								placeholder="Untitled Canvas"
+								className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-gray-900 placeholder:text-gray-400 min-w-0"
+								style={{ padding: 0 }}
+							/>
+							{saving && (
+								<div className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin flex-shrink-0" />
+							)}
+							{!saving && updatedAt && (
+								<span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+									{formatDate(updatedAt)}
+								</span>
+							)}
+						</>
+					)}
+				</div>
+			</div>
+
+			{/* Pro Button - Near Top Right, before Share */}
+			<div
+				className="absolute top-6 z-[var(--z-toolbar)]"
+				style={{ right: "calc(24px + 120px + 12px)" }}
+			>
+				<button
+					type="button"
+					title="Upgrade to Pro"
+					className="glass-card-elevated px-4 py-2.5 cursor-pointer flex items-center gap-2 border-none transition-all"
+					style={{
+						borderRadius: "var(--radius-md)",
+						boxShadow: "var(--shadow-md)",
+						background: "var(--color-bg-muted)",
+						animation: "fade-in 0.3s ease-out 0.1s backwards",
+					}}
+				>
+					<span className="text-sm font-semibold text-gray-700">Pro</span>
 				</button>
 			</div>
 
@@ -505,6 +541,7 @@ export function HeaderLeft({ onClearCanvas }: HeaderLeftProps) {
 				isOpen={menuOpen}
 				onClose={() => setMenuOpen(false)}
 				onClearCanvas={onClearCanvas}
+				onExport={onExport}
 			/>
 		</>
 	);
@@ -530,82 +567,51 @@ export function HeaderRight() {
 
 	return (
 		<>
-			<div className="absolute top-4 right-4 z-50 flex items-center gap-3">
-				{/* Connection Status */}
-				<div
-					className={`flex items-center gap-2 px-4 py-2.5 rounded-full border ${
-						isConnected
-							? "bg-emerald-50 border-emerald-200 shadow-[0_4px_12px_rgba(16,185,129,0.15)]"
-							: "bg-red-50 border-red-200 shadow-[0_4px_12px_rgba(239,68,68,0.15)]"
-					}`}
-				>
-					<div
-						className={`w-2 h-2 rounded-full ${
-							isConnected ? "bg-emerald-500 animate-pulse-dot" : "bg-red-500"
-						}`}
-					/>
-					<span
-						className={`text-xs font-bold uppercase tracking-wider ${
-							isConnected ? "text-emerald-700" : "text-red-700"
-						}`}
-					>
-						{isConnected ? "Live" : "Offline"}
-					</span>
-				</div>
-
-				{/* Collaborators */}
-				<div className="flex items-center">
-					{/* Avatar Stack */}
-					<div className="flex">
-						{/* My Avatar */}
-						<div
-							className="relative w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md border-[3px] border-white z-10"
-							style={{ backgroundColor: myColor }}
-							title={`You (${myName})`}
-						>
-							{getInitials(myName)}
-							<div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
+			<div className="absolute top-6 right-6 z-[var(--z-toolbar)] flex items-center gap-3">
+				{/* Collaborators - Simple Avatar Stack */}
+				{collaborators.length > 0 && (
+					<div className="flex items-center gap-2 glass-card px-3 py-2 rounded-full">
+						<Users size={14} className="text-gray-400" />
+						<div className="flex -space-x-2">
+							{collaborators.slice(0, 3).map((collab, index) => (
+								<div
+									key={collab.id}
+									className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white border-2 border-white"
+									style={{ backgroundColor: collab.color }}
+									title={collab.name}
+								>
+									{getInitials(collab.name)}
+								</div>
+							))}
+							{collaborators.length > 3 && (
+								<div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-600 border-2 border-white">
+									+{collaborators.length - 3}
+								</div>
+							)}
 						</div>
-
-						{/* Other Collaborators */}
-						{collaborators.slice(0, 4).map((collab, index) => (
-							<div
-								key={collab.id}
-								className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md border-[3px] border-white -ml-3"
-								style={{
-									backgroundColor: collab.color,
-									zIndex: 10 - index - 1,
-								}}
-								title={collab.name}
-							>
-								{getInitials(collab.name)}
-							</div>
-						))}
-
-						{/* Overflow Badge */}
-						{collaborators.length > 4 && (
-							<div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shadow-md border-[3px] border-white -ml-3">
-								+{collaborators.length - 4}
-							</div>
-						)}
 					</div>
-
-					{/* User Count Badge */}
-					{collaborators.length > 0 && (
-						<div className="ml-3 flex items-center gap-1.5 px-3 py-2 rounded-full bg-white shadow-md border border-gray-200">
-							<Users size={14} className="text-violet-500" />
-							<span className="text-xs font-bold text-gray-700">
-								{collaborators.length + 1}
-							</span>
-						</div>
-					)}
-				</div>
+				)}
 
 				{/* Share Button */}
 				<button
 					type="button"
 					onClick={() => setShareModalOpen(true)}
-					className="flex items-center gap-2 px-6 py-3 rounded-[14px] bg-gradient-to-r from-violet-500 via-violet-600 to-indigo-600 border-none cursor-pointer text-sm font-bold text-white shadow-[0_8px_24px_rgba(139,92,246,0.35)] transition-all hover:-translate-y-px hover:shadow-[0_12px_32px_rgba(139,92,246,0.45)]"
+					className="flex items-center gap-2 px-6 py-2.5 cursor-pointer border-none text-sm font-semibold transition-all"
+					style={{
+						borderRadius: "var(--radius-md)",
+						background: "var(--color-accent)",
+						color: "var(--color-text-on-accent)",
+						boxShadow: "var(--shadow-accent-strong)",
+						animation: "fade-in 0.3s ease-out 0.2s backwards",
+					}}
+					onMouseEnter={(e) => {
+						e.currentTarget.style.background = "var(--color-accent-hover)";
+						e.currentTarget.style.transform = "translateY(-1px)";
+					}}
+					onMouseLeave={(e) => {
+						e.currentTarget.style.background = "var(--color-accent)";
+						e.currentTarget.style.transform = "translateY(0)";
+					}}
 				>
 					<Share2 size={16} />
 					Share

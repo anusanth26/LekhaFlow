@@ -81,6 +81,7 @@ import {
 	type ShapeModifiers,
 } from "../lib/element-utils";
 import { outlineToSvgPath, simplifyPath } from "../lib/stroke-utils";
+import { supabase } from "../lib/supabase.client";
 import {
 	useCanvasStore,
 	useCollaboratorsArray,
@@ -89,9 +90,10 @@ import {
 import { CollaboratorCursors } from "./canvas/CollaboratorCursors";
 import { ConnectionStatus } from "./canvas/ConnectionStatus";
 import { ContextMenu } from "./canvas/ContextMenu";
+import { EmptyCanvasHero } from "./canvas/EmptyCanvasHero";
 import { ExportModal } from "./canvas/ExportModal";
 import { HeaderLeft, HeaderRight } from "./canvas/Header";
-import { HelpPanel } from "./canvas/HelpPanel";
+
 import { PropertiesPanel } from "./canvas/PropertiesPanel";
 import { type HandlePosition, ResizeHandles } from "./canvas/ResizeHandles";
 import { RotationControls } from "./canvas/RotationControls";
@@ -635,6 +637,82 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 	// Export modal state
 	const [showExportModal, setShowExportModal] = useState(false);
+	const [exportFormat, setExportFormat] = useState<"png" | "svg" | "json">("png");
+
+	// Handle export from sidebar menu
+	const handleExport = useCallback((format: "png" | "svg" | "json") => {
+		setExportFormat(format);
+		setShowExportModal(true);
+	}, []);
+
+	// ─────────────────────────────────────────────────────────────────
+	// AUTO-CAPTURE THUMBNAIL for dashboard preview
+	// Debounced: captures 2s after any element change
+	// ─────────────────────────────────────────────────────────────────
+
+	const thumbnailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const HTTP_URL = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8000";
+
+	useEffect(() => {
+		// Clear previous timer on every element change
+		if (thumbnailTimerRef.current) {
+			clearTimeout(thumbnailTimerRef.current);
+		}
+
+		// Wait 2s after last change, then capture & upload
+		thumbnailTimerRef.current = setTimeout(async () => {
+			const stage = stageRef.current;
+			if (!stage) return;
+
+			const layer = stage.getLayers()[0];
+			if (!layer || layer.children.length === 0) return;
+
+			try {
+				const KonvaLib = (await import("konva")).default;
+
+				// Add temp background
+				const bgRect = new KonvaLib.Rect({
+					x: -stage.x() / stage.scaleX(),
+					y: -stage.y() / stage.scaleY(),
+					width: stage.width() / stage.scaleX(),
+					height: stage.height() / stage.scaleY(),
+					fill: "#fafafa",
+				});
+				layer.add(bgRect);
+				bgRect.moveToBottom();
+				layer.draw();
+
+				const dataURL = stage.toDataURL({
+					pixelRatio: 0.2,
+					mimeType: "image/png",
+				});
+
+				// Cleanup
+				bgRect.destroy();
+				layer.draw();
+
+				// Upload
+				const { data: { session } } = await supabase.auth.getSession();
+				if (!session) return;
+
+				await fetch(`${HTTP_URL}/api/v1/canvas/${roomId}`, {
+					method: "PUT",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: `Bearer ${session.access_token}`,
+					},
+					body: JSON.stringify({ thumbnail_url: dataURL }),
+				});
+			} catch {}
+		}, 2000);
+
+		return () => {
+			if (thumbnailTimerRef.current) {
+				clearTimeout(thumbnailTimerRef.current);
+			}
+		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [elements, roomId, HTTP_URL]);
 
 	// Reconnect function
 	const handleReconnect = useCallback(() => {
@@ -1920,7 +1998,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		<div
 			ref={containerRef}
 			className="relative w-full h-full overflow-hidden"
-			style={{ backgroundColor: "#fafafa" }}
+			style={{ backgroundColor: "var(--color-canvas)" }}
 			onContextMenu={handleContextMenu}
 		>
 			{/* Clean dot grid background - Excalidraw style */}
@@ -1936,12 +2014,15 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			/>
 
 			{/* UI Components */}
-			<HeaderLeft onClearCanvas={handleClearCanvas} />
+			<HeaderLeft onClearCanvas={handleClearCanvas} onExport={handleExport} />
 			<HeaderRight />
 			<Toolbar />
 			<PropertiesPanel />
 			<ZoomControls />
-			<HelpPanel />
+
+
+			{/* Empty Canvas Hero - shown when no elements */}
+			{elements.length === 0 && <EmptyCanvasHero />}
 
 			{/* Collaborator Cursors */}
 			<CollaboratorCursors collaborators={collaborators} />
@@ -2146,6 +2227,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				onClose={() => setShowExportModal(false)}
 				elements={elements}
 				stageRef={stageRef}
+				initialFormat={exportFormat}
 			/>
 		</div>
 	);

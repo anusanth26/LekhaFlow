@@ -3,12 +3,12 @@
  * LEKHAFLOW - ZOOM CONTROLS
  * ============================================================================
  *
- * Bottom-center zoom controls with zoom in/out and reset.
+ * Bottom-right floating zoom controls with undo/redo buttons.
  */
 
 "use client";
 
-import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { Redo, Undo, ZoomIn, ZoomOut } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas-store";
 
 export function ZoomControls() {
@@ -18,24 +18,37 @@ export function ZoomControls() {
 	const zoomOut = () => setZoom(Math.max(0.1, zoom / 1.2));
 
 	return (
-		<div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
-			<div className="glass-card-elevated rounded-2xl p-1.5 flex items-center gap-1">
+		<div
+			className="fixed z-[var(--z-controls)]"
+			style={{ bottom: "24px", right: "24px" }}
+		>
+			{/* Zoom Controls - Pill Shape */}
+			<div
+				className="glass-card-elevated flex items-center gap-1 p-1.5 mb-3"
+				style={{
+					borderRadius: "24px",
+					boxShadow: "var(--shadow-md)",
+					animation: "fade-in 0.3s ease-out 0.4s backwards",
+				}}
+			>
 				{/* Zoom Out */}
 				<button
 					type="button"
 					onClick={zoomOut}
 					title="Zoom out (Ctrl -)"
-					className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					style={{ borderRadius: "var(--radius-md)" }}
 				>
-					<ZoomOut size={16} />
+					<ZoomOut size={18} />
 				</button>
 
 				{/* Zoom Level Display */}
 				<button
 					type="button"
 					onClick={resetViewport}
-					title="Reset zoom"
-					className="px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-semibold min-w-[56px] tabular-nums cursor-pointer transition-colors border-none"
+					title="Reset zoom (Ctrl 0)"
+					className="px-4 py-2 rounded-lg bg-transparent hover:bg-gray-100 text-gray-600 text-sm font-semibold min-w-[64px] tabular-nums cursor-pointer transition-colors border-none"
+					style={{ borderRadius: "var(--radius-md)" }}
 				>
 					{Math.round(zoom * 100)}%
 				</button>
@@ -45,22 +58,46 @@ export function ZoomControls() {
 					type="button"
 					onClick={zoomIn}
 					title="Zoom in (Ctrl +)"
-					className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					style={{ borderRadius: "var(--radius-md)" }}
 				>
-					<ZoomIn size={16} />
+					<ZoomIn size={18} />
 				</button>
+			</div>
 
-				{/* Separator */}
-				<div className="w-px h-5 bg-gray-200 mx-1" />
-
-				{/* Fit to Screen */}
+			{/* Undo/Redo Controls */}
+			<div
+				className="glass-card-elevated flex items-center gap-1 p-1.5"
+				style={{
+					borderRadius: "24px",
+					boxShadow: "var(--shadow-md)",
+					animation: "fade-in 0.3s ease-out 0.5s backwards",
+				}}
+			>
+				{/* Undo */}
 				<button
 					type="button"
-					onClick={resetViewport}
-					title="Fit to screen"
-					className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					onClick={() => {
+						/* TODO: Implement undo */
+					}}
+					title="Undo (Ctrl Z)"
+					className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					style={{ borderRadius: "var(--radius-md)" }}
 				>
-					<Maximize2 size={16} />
+					<Undo size={18} />
+				</button>
+
+				{/* Redo */}
+				<button
+					type="button"
+					onClick={() => {
+						/* TODO: Implement redo */
+					}}
+					title="Redo (Ctrl Shift Z)"
+					className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					style={{ borderRadius: "var(--radius-md)" }}
+				>
+					<Redo size={18} />
 				</button>
 			</div>
 		</div>

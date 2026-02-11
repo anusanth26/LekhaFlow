@@ -23,6 +23,7 @@ export type CreateCanvasType = z.infer<typeof CreateCanvasSchema>;
 export const UpdateCanvasSchema = z.object({
 	name: z.string().min(1).max(50).optional(),
 	data: z.string().optional(),
+	thumbnail_url: z.string().optional(),
 });
 
 export type UpdateCanvasType = z.infer<typeof UpdateCanvasSchema>;

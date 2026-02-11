@@ -2,44 +2,138 @@
 @config "../tailwind.config.js";
 
 :root {
-	/* Light cream/white background like the logo */
-	--background: #f8f7f4;
-	--foreground: #1a1a2e;
-
-	/* Cards slightly off-white */
-	--card: #ffffff;
-	--card-foreground: #1a1a2e;
-
-	/* Purple primary (from logo) */
-	--primary: #7c3aed;
-	--primary-foreground: #ffffff;
-
-	/* Gold accent (from logo's flowing lines) */
-	--accent: #d4a574;
-	--accent-foreground: #1a1a2e;
-
-	/* Secondary - lighter purple */
-	--secondary: #ede9fe;
-	--secondary-foreground: #5b21b6;
-
-	/* Muted */
-	--muted: #e8e6e1;
-	--muted-foreground: #64748b;
-
-	/* Borders */
-	--border: #e2e0db;
-	--input: #e2e0db;
-	--ring: #7c3aed;
-
-	--radius: 0.75rem;
+	/* ====================================================================
+	   DESIGN SYSTEM - Color Palette
+	   ==================================================================== */
+	
+	/* Core Colors */
+	--color-canvas: #ffffff;
+	--color-accent: #6965db;
+	--color-accent-hover: #5851c9;
+	--color-accent-active: #4a44b8;
+	
+	/* Text Colors */
+	--color-text-primary: #404040;
+	--color-text-secondary: #a8a8a8;
+	--color-text-on-accent: #ffffff;
+	
+	/* Background Colors */
+	--color-bg-surface: #ffffff;
+	--color-bg-elevated: #ffffff;
+	--color-bg-muted: #f3f4f6;
+	
+	/* Border Colors */
+	--color-border-light: #e5e7eb;
+	--color-border-default: #d1d5db;
+	--color-border-strong: #9ca3af;
+	
+	/* Status Colors */
+	--color-success: #10b981;
+	--color-warning: #f59e0b;
+	--color-error: #ef4444;
+	--color-info: #3b82f6;
+	
+	/* ====================================================================
+	   DESIGN SYSTEM - Typography
+	   ==================================================================== */
+	
+	/* Font Families */
+	--font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--font-handwritten: "Virgil", "Caveat", "Comic Sans MS", cursive;
+	--font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+	
+	/* Font Sizes */
+	--text-xs: 0.75rem; /* 12px */
+	--text-sm: 0.875rem; /* 14px */
+	--text-base: 1rem; /* 16px */
+	--text-lg: 1.125rem; /* 18px */
+	--text-xl: 1.25rem; /* 20px */
+	--text-2xl: 1.5rem; /* 24px */
+	--text-3xl: 1.875rem; /* 30px */
+	--text-4xl: 2.25rem; /* 36px */
+	--text-5xl: 3rem; /* 48px */
+	
+	/* Line Heights */
+	--leading-tight: 1.25;
+	--leading-normal: 1.5;
+	--leading-relaxed: 1.75;
+	
+	/* ====================================================================
+	   DESIGN SYSTEM - Spacing
+	   ==================================================================== */
+	
+	--space-xs: 8px;
+	--space-sm: 12px;
+	--space-md: 16px;
+	--space-lg: 24px;
+	--space-xl: 32px;
+	--space-2xl: 48px;
+	
+	/* ====================================================================
+	   DESIGN SYSTEM - Elevation (Shadows)
+	   ==================================================================== */
+	
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.08);
+	--shadow-md: 0 2px 4px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.1);
+	--shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12);
+	--shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.1), 0 16px 48px rgba(0, 0, 0, 0.15);
+	
+	/* Accent shadows (purple glow) */
+	--shadow-accent: 0 4px 12px rgba(105, 101, 219, 0.2), 0 2px 4px rgba(105, 101, 219, 0.15);
+	--shadow-accent-strong: 0 8px 24px rgba(105, 101, 219, 0.25), 0 4px 8px rgba(105, 101, 219, 0.2);
+	
+	/* ====================================================================
+	   DESIGN SYSTEM - Border Radius
+	   ==================================================================== */
+	
+	--radius-sm: 4px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
+	--radius-2xl: 24px;
+	--radius-pill: 9999px;
+	--radius-circle: 50%;
+	
+	/* ====================================================================
+	   DESIGN SYSTEM - Z-Index Layers
+	   ==================================================================== */
+	
+	--z-canvas: 1;
+	--z-controls: 10;
+	--z-toolbar: 20;
+	--z-panels: 30;
+	--z-modals: 40;
+	--z-tooltips: 50;
+	
+	/* ====================================================================
+	   LEGACY COMPATIBILITY (maintain old vars for gradual migration)
+	   ==================================================================== */
+	
+	--background: var(--color-canvas);
+	--foreground: var(--color-text-primary);
+	--card: var(--color-bg-surface);
+	--card-foreground: var(--color-text-primary);
+	--primary: var(--color-accent);
+	--primary-foreground: var(--color-text-on-accent);
+	--accent: var(--color-accent);
+	--accent-foreground: var(--color-text-on-accent);
+	--secondary: var(--color-bg-muted);
+	--secondary-foreground: var(--color-text-primary);
+	--muted: var(--color-bg-muted);
+	--muted-foreground: var(--color-text-secondary);
+	--border: var(--color-border-default);
+	--input: var(--color-border-default);
+	--ring: var(--color-accent);
+	--radius: var(--radius-md);
 }
 
 body {
-	background-color: var(--background);
-	color: var(--foreground);
-	font-family: var(--font-sans);
+	background-color: var(--color-canvas);
+	color: var(--color-text-primary);
+	font-family: var(--font-ui);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 /* ========================================================================
@@ -71,6 +165,39 @@ body {
 	}
 }
 
+@keyframes scale-in {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes slide-in-top {
+	from {
+		opacity: 0;
+		transform: translateY(-12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slide-in-bottom {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 @keyframes slide-up {
 	from {
 		opacity: 0;
@@ -90,17 +217,6 @@ body {
 	to {
 		opacity: 1;
 		transform: translateY(0) scale(1);
-	}
-}
-
-@keyframes scale-in {
-	from {
-		opacity: 0;
-		transform: scale(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1);
 	}
 }
 
@@ -131,8 +247,8 @@ body {
    ======================================================================== */
 
 ::selection {
-	background-color: rgba(124, 58, 237, 0.15);
-	color: #1a1a2e;
+	background-color: rgba(105, 101, 219, 0.15);
+	color: var(--color-text-primary);
 }
 
 /* ========================================================================
@@ -144,8 +260,8 @@ input[type="range"] {
 	-webkit-appearance: none;
 	appearance: none;
 	height: 6px;
-	border-radius: 999px;
-	background: #e2e8f0;
+	border-radius: var(--radius-pill);
+	background: var(--color-border-light);
 	outline: none;
 }
 
@@ -154,38 +270,36 @@ input[type="range"]::-webkit-slider-thumb {
 	appearance: none;
 	width: 16px;
 	height: 16px;
-	border-radius: 50%;
-	background: #7c3aed;
+	border-radius: var(--radius-circle);
+	background: var(--color-accent);
 	cursor: pointer;
 	border: 2px solid white;
-	box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+	box-shadow: var(--shadow-accent);
 }
 
 input[type="range"]::-moz-range-thumb {
 	width: 16px;
 	height: 16px;
-	border-radius: 50%;
-	background: #7c3aed;
+	border-radius: var(--radius-circle);
+	background: var(--color-accent);
 	cursor: pointer;
 	border: 2px solid white;
-	box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+	box-shadow: var(--shadow-accent);
 }
 
 /* Glass card utility */
 .glass-card {
 	background: rgba(255, 255, 255, 0.92);
 	backdrop-filter: blur(12px);
-	border: 1px solid rgba(229, 231, 235, 0.8);
-	box-shadow:
-		0 4px 24px rgba(0, 0, 0, 0.06),
-		0 1px 5px rgba(0, 0, 0, 0.04);
+	border: 1px solid var(--color-border-light);
+	box-shadow: var(--shadow-md);
+	border-radius: var(--radius-lg);
 }
 
 .glass-card-elevated {
 	background: rgba(255, 255, 255, 0.96);
 	backdrop-filter: blur(16px);
-	border: 1px solid rgba(229, 231, 235, 0.9);
-	box-shadow:
-		0 8px 32px rgba(0, 0, 0, 0.08),
-		0 2px 8px rgba(0, 0, 0, 0.04);
+	border: 1px solid var(--color-border-light);
+	box-shadow: var(--shadow-lg);
+	border-radius: var(--radius-lg);
 }

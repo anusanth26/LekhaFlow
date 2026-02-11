@@ -11,6 +11,12 @@ const fontSans = Inter({
 export const metadata: Metadata = {
 	title: "LekhaFlow | Collaborative Canvas",
 	description: "Real-time visual collaboration for teams",
+	viewport: {
+		width: "device-width",
+		initialScale: 1,
+		maximumScale: 1,
+		userScalable: false,
+	},
 };
 
 export default function RootLayout({
