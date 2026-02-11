@@ -47,7 +47,7 @@ export default function DebugAuthPage() {
 		checkAuth();
 	}, []);
 
-	if (loading) {
+	if (loading || !authInfo) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<p>Loading auth info...</p>
