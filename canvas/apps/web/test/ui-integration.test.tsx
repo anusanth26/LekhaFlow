@@ -101,7 +101,7 @@ describe("UI Integration Tests", () => {
 			const user = userEvent.setup();
 
 			// Initial state (Selection tool is default)
-			const selectionBtn = screen.getByTitle(/Selection/i);
+			const selectionBtn = screen.getByTitle(/Select \(V\)/i);
 			expect(useCanvasStore.getState().activeTool).toBe("selection");
 
 			// Click Rectangle tool

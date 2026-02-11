@@ -92,6 +92,7 @@ export function useYjsSync(
 		setCollaborators,
 		setConnectionStatus,
 		setRoomId,
+		setSavingStatus,
 		myName,
 		myColor,
 	} = useCanvasStore();
@@ -99,6 +100,7 @@ export function useYjsSync(
 	// Use refs for identity to avoid reconnection loops when identity changes
 	const myNameRef = useRef(myName);
 	const myColorRef = useRef(myColor);
+	const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// Keep refs in sync and update awareness when identity changes
 	useEffect(() => {
@@ -152,6 +154,7 @@ export function useYjsSync(
 			onSynced: () => {
 				console.log("[Hocuspocus] Synced");
 				setConnectionStatus(true, true);
+				setSavingStatus("saved");
 
 				// Set local awareness state using refs (not reactive values)
 				provider.awareness?.setLocalStateField("user", {
@@ -162,6 +165,7 @@ export function useYjsSync(
 			onDisconnect: () => {
 				console.log("[Hocuspocus] Disconnected");
 				setConnectionStatus(false, false);
+				setSavingStatus("error");
 			},
 			onAuthenticationFailed: (data: { reason: string }) => {
 				console.error("[Hocuspocus] Auth failed:", data.reason);
@@ -210,6 +214,18 @@ export function useYjsSync(
 			}
 
 			setElements(elementsMap);
+
+			// Track saving status: mark as "saving" when changes occur,
+			// then "saved" after the debounce period (matches ws-backend's 3s debounce)
+			if (providerRef.current) {
+				setSavingStatus("saving");
+				if (savedTimerRef.current) {
+					clearTimeout(savedTimerRef.current);
+				}
+				savedTimerRef.current = setTimeout(() => {
+					setSavingStatus("saved");
+				}, 4000); // slightly longer than server debounce (3s) to account for network
+			}
 		};
 
 		yElements.observe(handleElementsChange);
@@ -258,11 +274,17 @@ export function useYjsSync(
 			undoManagerRef.current?.destroy();
 			undoManagerRef.current = null;
 
+			if (savedTimerRef.current) {
+				clearTimeout(savedTimerRef.current);
+				savedTimerRef.current = null;
+			}
+
 			provider.disconnect();
 			provider.destroy();
 			providerRef.current = null;
 
 			setConnectionStatus(false, false);
+			setSavingStatus("idle");
 			setRoomId(null);
 		};
 	}, [
@@ -273,6 +295,7 @@ export function useYjsSync(
 		setCollaborators,
 		setConnectionStatus,
 		setRoomId,
+		setSavingStatus,
 		getYElements,
 	]);
 

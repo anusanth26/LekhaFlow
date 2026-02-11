@@ -13,6 +13,15 @@ const PORT = parseInt(serverEnv.WS_PORT, 10);
 const server = Server.configure({
 	port: PORT,
 
+	/**
+	 * Debounce database writes to avoid excessive saves during active editing.
+	 * The onStoreDocument hook will only fire after 3 seconds of inactivity.
+	 * maxDebounce ensures a save happens at least every 10 seconds during
+	 * continuous editing, preventing data loss.
+	 */
+	debounce: 3000,
+	maxDebounce: 10000,
+
 	onAuthenticate: async (data) => {
 		const { token, documentName } = data;
 

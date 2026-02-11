@@ -22,6 +22,7 @@ import {
 	Presentation,
 	Square,
 	Type,
+	Unlock,
 } from "lucide-react";
 import React from "react";
 import { useCanvasStore } from "../../store/canvas-store";
@@ -34,7 +35,6 @@ interface ToolDefinition {
 }
 
 const TOOLS: ToolDefinition[] = [
-	{ id: "hand", icon: <Lock size={18} />, label: "Lock", shortcut: "L" },
 	{ id: "hand", icon: <Hand size={18} />, label: "Hand", shortcut: "H" },
 	{
 		id: "selection",
@@ -86,11 +86,13 @@ const TOOLS: ToolDefinition[] = [
 export function Toolbar() {
 	const activeTool = useCanvasStore((state) => state.activeTool);
 	const setActiveTool = useCanvasStore((state) => state.setActiveTool);
+	const isReadOnly = useCanvasStore((state) => state.isReadOnly);
+	const setReadOnly = useCanvasStore((state) => state.setReadOnly);
 
 	return (
-		<div className="absolute left-1/2 top-6 -translate-x-1/2 z-[var(--z-toolbar)]">
+		<div className="absolute left-1/2 top-[72px] sm:top-4 -translate-x-1/2 z-[var(--z-toolbar)] max-w-[calc(100vw-32px)]">
 			<div
-				className="glass-card-elevated flex items-center gap-1 px-2 py-2"
+				className="glass-card-elevated flex items-center gap-1 px-2 py-2 overflow-x-auto scrollbar-hide"
 				style={{
 					borderRadius: "28px",
 					height: "56px",
@@ -98,12 +100,51 @@ export function Toolbar() {
 					animation: "fade-in 0.3s ease-out, slide-in-top 0.3s ease-out",
 				}}
 			>
+				{/* Lock/Unlock Button - Toggle Read-Only Mode */}
+				<button
+					type="button"
+					onClick={() => setReadOnly(!isReadOnly)}
+					title={isReadOnly ? "Unlock Canvas (L)" : "Lock Canvas (L)"}
+					className={`
+						relative w-10 h-10 rounded-lg flex items-center justify-center
+						transition-all duration-150 cursor-pointer border-none group
+						${
+							isReadOnly
+								? "bg-red-100 text-red-600"
+								: "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+						}
+					`}
+					style={{ borderRadius: "8px" }}
+				>
+					{isReadOnly ? <Lock size={18} /> : <Unlock size={18} />}
+					<div
+						className={`
+							absolute -bottom-1 -right-1
+							w-4 h-4 rounded flex items-center justify-center
+							text-[10px] font-mono font-medium
+							transition-all duration-150
+							${
+								isReadOnly
+									? "bg-red-600 text-white"
+									: "bg-gray-300 text-gray-600 group-hover:bg-gray-400"
+							}
+						`}
+						style={{ fontSize: "10px", lineHeight: "1" }}
+					>
+						L
+					</div>
+				</button>
+
+				{/* Separator after lock */}
+				<div className="h-6 w-px bg-gray-200 mx-1" />
+
 				{TOOLS.map((tool, index) => {
-					const isActive = activeTool === tool.id;
+					const isActive = activeTool === tool.id && !isReadOnly;
+					const isDisabled = isReadOnly && tool.id !== "hand";
 					return (
 						<React.Fragment key={`${tool.id}-${index}`}>
-							{/* Separator after selection tools (after index 2) */}
-							{index === 3 && <div className="h-6 w-px bg-gray-200 mx-1" />}
+							{/* Separator after hand+selection tools (after index 1) */}
+							{index === 2 && <div className="h-6 w-px bg-gray-200 mx-1" />}
 							{/* Separator before eraser (before last tool) */}
 							{index === TOOLS.length - 1 && (
 								<div className="h-6 w-px bg-gray-200 mx-1" />
@@ -111,15 +152,22 @@ export function Toolbar() {
 
 							<button
 								type="button"
-								onClick={() => setActiveTool(tool.id)}
-								title={`${tool.label} (${tool.shortcut})`}
+								onClick={() => {
+									if (!isDisabled) {
+										setActiveTool(tool.id);
+									}
+								}}
+								disabled={isDisabled}
+								title={`${tool.label} (${tool.shortcut})${isDisabled ? " — Canvas is locked" : ""}`}
 								className={`
 									relative w-10 h-10 rounded-lg flex items-center justify-center
-									transition-all duration-150 cursor-pointer border-none group
+									transition-all duration-150 border-none group
 									${
-										isActive
-											? "bg-violet-100 text-violet-600"
-											: "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+										isDisabled
+											? "text-gray-300 cursor-not-allowed opacity-50"
+											: isActive
+												? "bg-violet-100 text-violet-600 cursor-pointer"
+												: "text-gray-500 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
 									}
 								`}
 								style={{
