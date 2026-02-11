@@ -9,13 +9,17 @@
 "use client";
 
 import {
+	ArrowLeft,
 	Check,
+	Cloud,
+	CloudOff,
 	Copy,
 	Download,
 	FileText,
 	FolderOpen,
 	Image,
 	Link2,
+	Loader2,
 	Mail,
 	Menu,
 	Plus,
@@ -27,6 +31,7 @@ import {
 	Users,
 	X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.client";
 import {
@@ -379,6 +384,49 @@ function ShareModal({ isOpen, onClose, roomId }: ShareModalProps) {
 }
 
 // ============================================================================
+// SAVING STATUS INDICATOR
+// ============================================================================
+
+export function SavingStatusIndicator() {
+	const savingStatus = useCanvasStore((state) => state.savingStatus);
+
+	// Don't show indicator in idle state
+	if (savingStatus === "idle") return null;
+
+	const config = {
+		saving: {
+			icon: <Loader2 size={14} className="animate-spin text-amber-500" />,
+			text: "Saving...",
+			textClass: "text-amber-600",
+		},
+		saved: {
+			icon: <Cloud size={14} className="text-green-500" />,
+			text: "Saved",
+			textClass: "text-green-600",
+		},
+		error: {
+			icon: <CloudOff size={14} className="text-red-500" />,
+			text: "Save failed",
+			textClass: "text-red-600",
+		},
+	}[savingStatus];
+
+	if (!config) return null;
+
+	return (
+		<div
+			className="glass-card px-3 py-2 flex items-center gap-1.5 rounded-lg flex-shrink-0"
+			style={{ animation: "fade-in 0.2s ease-out" }}
+		>
+			{config.icon}
+			<span className={`text-xs font-medium ${config.textClass}`}>
+				{config.text}
+			</span>
+		</div>
+	);
+}
+
+// ============================================================================
 // HEADER LEFT (Menu & Title)
 // ============================================================================
 
@@ -479,34 +527,55 @@ export function HeaderLeft({ onClearCanvas, onExport }: HeaderLeftProps) {
 		}
 	};
 
+	const router = useRouter();
+
+	// Hydrate isReadOnly from localStorage when roomId is known
+	const setReadOnly = useCanvasStore((state) => state.setReadOnly);
+	useEffect(() => {
+		if (!roomId) return;
+		try {
+			const stored = localStorage.getItem(`lekhaflow-lock-${roomId}`);
+			if (stored !== null) {
+				const locked = JSON.parse(stored);
+				if (typeof locked === "boolean") setReadOnly(locked);
+			}
+		} catch {}
+	}, [roomId, setReadOnly]);
+
 	return (
 		<>
-			{/* Hamburger Menu Button - Top Left */}
-			<div className="absolute top-6 left-6 z-[var(--z-toolbar)]">
+			{/* Header Left Row — flex container for back, menu, title, saving status */}
+			<div
+				className="absolute top-4 left-4 right-[180px] z-[var(--z-toolbar)] flex items-center gap-2"
+				style={{ animation: "fade-in 0.3s ease-out" }}
+			>
+				{/* Back Button */}
+				<button
+					type="button"
+					onClick={() => router.push("/")}
+					title="Back to Dashboard"
+					className="glass-card-elevated w-10 h-10 flex-shrink-0 rounded-xl cursor-pointer flex items-center justify-center border-none transition-all hover:bg-gray-50"
+					style={{ boxShadow: "var(--shadow-md)" }}
+				>
+					<ArrowLeft size={18} className="text-gray-600" />
+				</button>
+
+				{/* Menu Button */}
 				<button
 					type="button"
 					onClick={() => setMenuOpen(true)}
 					title="Menu"
-					className="glass-card-elevated w-10 h-10 rounded-lg cursor-pointer flex items-center justify-center border-none transition-all hover:bg-gray-50"
-					style={{
-						borderRadius: "var(--radius-md)",
-						boxShadow: "var(--shadow-md)",
-						animation: "fade-in 0.3s ease-out, scale-in 0.3s ease-out",
-					}}
+					className="glass-card-elevated w-10 h-10 flex-shrink-0 rounded-xl cursor-pointer flex items-center justify-center border-none transition-all hover:bg-gray-50"
+					style={{ boxShadow: "var(--shadow-md)" }}
 				>
-					<Menu size={20} className="text-gray-600" />
+					<Menu size={18} className="text-gray-600" />
 				</button>
-			</div>
 
-			{/* Canvas Name - Next to Menu Button */}
-			<div
-				className="absolute top-6 z-[var(--z-toolbar)]"
-				style={{
-					left: "calc(24px + 40px + 12px)", // 24px (left padding) + 40px (menu button width) + 12px (gap)
-					animation: "fade-in 0.3s ease-out 0.05s backwards",
-				}}
-			>
-				<div className="glass-card-elevated px-4 py-2 flex items-center gap-2 min-w-[200px] max-w-[400px]">
+				{/* Canvas Name Card */}
+				<div
+					className="glass-card-elevated px-3 py-2 flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[360px] flex-shrink"
+					style={{ animation: "fade-in 0.3s ease-out 0.05s backwards" }}
+				>
 					{loading ? (
 						<div className="flex items-center gap-2 text-gray-400">
 							<div className="w-4 h-4 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin" />
@@ -532,33 +601,16 @@ export function HeaderLeft({ onClearCanvas, onExport }: HeaderLeftProps) {
 								<div className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin flex-shrink-0" />
 							)}
 							{!saving && updatedAt && (
-								<span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+								<span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0 hidden sm:inline">
 									{formatDate(updatedAt)}
 								</span>
 							)}
 						</>
 					)}
 				</div>
-			</div>
 
-			{/* Pro Button - Near Top Right, before Share */}
-			<div
-				className="absolute top-6 z-[var(--z-toolbar)]"
-				style={{ right: "calc(24px + 120px + 12px)" }}
-			>
-				<button
-					type="button"
-					title="Upgrade to Pro"
-					className="glass-card-elevated px-4 py-2.5 cursor-pointer flex items-center gap-2 border-none transition-all"
-					style={{
-						borderRadius: "var(--radius-md)",
-						boxShadow: "var(--shadow-md)",
-						background: "var(--color-bg-muted)",
-						animation: "fade-in 0.3s ease-out 0.1s backwards",
-					}}
-				>
-					<span className="text-sm font-semibold text-gray-700">Pro</span>
-				</button>
+				{/* Saving Status Indicator — inline in the flex row */}
+				<SavingStatusIndicator />
 			</div>
 
 			{/* Sidebar Menu */}
@@ -592,7 +644,7 @@ export function HeaderRight() {
 
 	return (
 		<>
-			<div className="absolute top-6 right-6 z-[var(--z-toolbar)] flex items-center gap-3">
+			<div className="absolute top-4 right-4 z-[var(--z-toolbar)] flex items-center gap-2 sm:gap-3">
 				{/* Collaborators - Simple Avatar Stack */}
 				{collaborators.length > 0 && (
 					<div className="flex items-center gap-2 glass-card px-3 py-2 rounded-full">

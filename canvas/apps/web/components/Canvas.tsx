@@ -69,7 +69,7 @@ import {
 	Stage,
 	Text,
 } from "react-konva";
-
+import { useViewportPersistence } from "../hooks/useViewportPersistence";
 import { useYjsSync } from "../hooks/useYjsSync";
 import {
 	createArrow,
@@ -520,7 +520,15 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		updateSelection,
 		undo,
 		redo,
+		canUndo,
+		canRedo,
 	} = useYjsSync(roomId, token ?? null);
+
+	// ─────────────────────────────────────────────────────────────────
+	// VIEWPORT PERSISTENCE - Save/restore camera position per room
+	// ─────────────────────────────────────────────────────────────────
+
+	useViewportPersistence(roomId);
 
 	// ─────────────────────────────────────────────────────────────────
 	// STORE - Local state synced with Yjs
@@ -549,6 +557,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		setInteractionStartPoint,
 		isConnected,
 		isSynced,
+		isReadOnly,
+		setReadOnly,
 	} = useCanvasStore();
 
 	// Elements and collaborators from store
@@ -1036,14 +1046,19 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	/**
 	 * Handle context menu (right-click)
 	 */
-	const handleContextMenu = useCallback((e: React.MouseEvent) => {
-		e.preventDefault();
-		setContextMenu({
-			x: e.clientX,
-			y: e.clientY,
-			visible: true,
-		});
-	}, []);
+	const handleContextMenu = useCallback(
+		(e: React.MouseEvent) => {
+			e.preventDefault();
+			// Block context menu in read-only mode
+			if (isReadOnly) return;
+			setContextMenu({
+				x: e.clientX,
+				y: e.clientY,
+				visible: true,
+			});
+		},
+		[isReadOnly],
+	);
 
 	/**
 	 * Close context menu
@@ -1094,6 +1109,17 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				return;
 			}
 
+			// Lock toggle: L key (works regardless of read-only state)
+			if (
+				!e.ctrlKey &&
+				!e.metaKey &&
+				!e.altKey &&
+				e.key.toLowerCase() === "l"
+			) {
+				setReadOnly(!isReadOnly);
+				return;
+			}
+
 			// Tool shortcuts (only when no modifier keys are pressed)
 			if (!e.ctrlKey && !e.metaKey && !e.altKey) {
 				const toolShortcuts: Record<string, Tool> = {
@@ -1112,6 +1138,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 				const tool = toolShortcuts[e.key.toLowerCase()];
 				if (tool) {
+					// In read-only mode, only allow hand tool
+					if (isReadOnly && tool !== "hand") return;
 					setActiveTool(tool);
 					return;
 				}
@@ -1136,11 +1164,12 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				}
 			}
 
-			// Delete selected elements
+			// Delete selected elements (blocked in read-only mode)
 			if (
 				(e.key === "Delete" || e.key === "Backspace") &&
 				selectedElementIds.size > 0
 			) {
+				if (isReadOnly) return;
 				deleteElements(Array.from(selectedElementIds));
 				clearSelection();
 				return;
@@ -1243,6 +1272,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		handlePaste,
 		handleBringToFront,
 		handleSendToBack,
+		isReadOnly,
+		setReadOnly,
 	]);
 
 	// ─────────────────────────────────────────────────────────────────
@@ -1283,6 +1314,11 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		(e: KonvaEventObject<MouseEvent>) => {
 			const point = getCanvasPoint(e);
 			setInteractionStartPoint(point);
+
+			// READ-ONLY MODE: Only allow hand tool panning
+			if (isReadOnly && activeTool !== "hand") {
+				return;
+			}
 
 			// SHIFT+CLICK while drawing a line/arrow: Add a new point (create multi-segment line)
 			if (
@@ -1463,6 +1499,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			deleteElements,
 			isDrawing,
 			drawingElement,
+			isReadOnly,
 		],
 	);
 
@@ -2022,7 +2059,12 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			<HeaderRight />
 			<Toolbar />
 			<PropertiesPanel />
-			<ZoomControls />
+			<ZoomControls
+				undo={undo}
+				redo={redo}
+				canUndo={canUndo}
+				canRedo={canRedo}
+			/>
 
 			{/* Empty Canvas Hero - shown when no elements */}
 			{elements.length === 0 && <EmptyCanvasHero />}
