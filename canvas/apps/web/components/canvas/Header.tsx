@@ -14,7 +14,6 @@ import {
 	Download,
 	FileText,
 	FolderOpen,
-	HelpCircle,
 	Image,
 	Link2,
 	Mail,
@@ -46,7 +45,12 @@ interface SidebarMenuProps {
 	onExport?: (format: "png" | "svg" | "json") => void;
 }
 
-function SidebarMenu({ isOpen, onClose, onClearCanvas, onExport }: SidebarMenuProps) {
+function SidebarMenu({
+	isOpen,
+	onClose,
+	onClearCanvas,
+	onExport,
+}: SidebarMenuProps) {
 	return (
 		<>
 			{/* Backdrop */}
@@ -114,9 +118,30 @@ function SidebarMenu({ isOpen, onClose, onClearCanvas, onExport }: SidebarMenuPr
 							Export
 						</p>
 						<div className="flex flex-col gap-1">
-							<MenuItem icon={<Image />} label="Export as PNG" onClick={() => { onExport?.("png"); onClose(); }} />
-							<MenuItem icon={<FileText />} label="Export as SVG" onClick={() => { onExport?.("svg"); onClose(); }} />
-							<MenuItem icon={<Download />} label="Export as JSON" onClick={() => { onExport?.("json"); onClose(); }} />
+							<MenuItem
+								icon={<Image />}
+								label="Export as PNG"
+								onClick={() => {
+									onExport?.("png");
+									onClose();
+								}}
+							/>
+							<MenuItem
+								icon={<FileText />}
+								label="Export as SVG"
+								onClick={() => {
+									onExport?.("svg");
+									onClose();
+								}}
+							/>
+							<MenuItem
+								icon={<Download />}
+								label="Export as JSON"
+								onClick={() => {
+									onExport?.("json");
+									onClose();
+								}}
+							/>
 						</div>
 					</div>
 
@@ -552,7 +577,7 @@ export function HeaderLeft({ onClearCanvas, onExport }: HeaderLeftProps) {
 // ============================================================================
 
 export function HeaderRight() {
-	const { myName, myColor, isConnected, roomId } = useCanvasStore();
+	const { roomId } = useCanvasStore();
 	const collaborators = useCollaboratorsArray();
 	const [shareModalOpen, setShareModalOpen] = useState(false);
 
@@ -573,7 +598,7 @@ export function HeaderRight() {
 					<div className="flex items-center gap-2 glass-card px-3 py-2 rounded-full">
 						<Users size={14} className="text-gray-400" />
 						<div className="flex -space-x-2">
-							{collaborators.slice(0, 3).map((collab, index) => (
+							{collaborators.slice(0, 3).map((collab, _index) => (
 								<div
 									key={collab.id}
 									className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white border-2 border-white"

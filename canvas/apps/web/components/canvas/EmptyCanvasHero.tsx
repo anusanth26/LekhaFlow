@@ -51,11 +51,13 @@ export function EmptyCanvasHero() {
 						fontFamily: "var(--font-handwritten)",
 					}}
 				>
-					Your infinite canvas awaits. Pick a tool from above and start creating!
+					Your infinite canvas awaits. Pick a tool from above and start
+					creating!
 				</div>
 
 				{/* Hand-drawn Arrow pointing to Toolbar */}
 				<svg
+					aria-label="Arrow pointing to toolbar"
 					className="absolute pointer-events-none"
 					style={{
 						top: "-180px",
@@ -67,6 +69,7 @@ export function EmptyCanvasHero() {
 					fill="none"
 					xmlns="http://www.w3.org/2000/svg"
 				>
+					<title>Arrow pointing to toolbar</title>
 					{/* Curved dashed arrow path */}
 					<path
 						d="M 150 150 Q 120 80 100 40"
@@ -102,6 +105,7 @@ export function EmptyCanvasHero() {
 
 				{/* Hand-drawn Arrow pointing to Help button */}
 				<svg
+					aria-label="Arrow pointing to help button"
 					className="absolute pointer-events-none"
 					style={{
 						bottom: "-180px",
@@ -113,6 +117,7 @@ export function EmptyCanvasHero() {
 					fill="none"
 					xmlns="http://www.w3.org/2000/svg"
 				>
+					<title>Arrow pointing to help button</title>
 					{/* Curved dashed arrow path */}
 					<path
 						d="M 50 30 Q 100 80 150 140"

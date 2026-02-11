@@ -637,7 +637,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 	// Export modal state
 	const [showExportModal, setShowExportModal] = useState(false);
-	const [exportFormat, setExportFormat] = useState<"png" | "svg" | "json">("png");
+	const [exportFormat, setExportFormat] = useState<"png" | "svg" | "json">(
+		"png",
+	);
 
 	// Handle export from sidebar menu
 	const handleExport = useCallback((format: "png" | "svg" | "json") => {
@@ -692,7 +694,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				layer.draw();
 
 				// Upload
-				const { data: { session } } = await supabase.auth.getSession();
+				const {
+					data: { session },
+				} = await supabase.auth.getSession();
 				if (!session) return;
 
 				await fetch(`${HTTP_URL}/api/v1/canvas/${roomId}`, {
@@ -711,8 +715,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				clearTimeout(thumbnailTimerRef.current);
 			}
 		};
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [elements, roomId, HTTP_URL]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [roomId, HTTP_URL]);
 
 	// Reconnect function
 	const handleReconnect = useCallback(() => {
@@ -2019,7 +2023,6 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			<Toolbar />
 			<PropertiesPanel />
 			<ZoomControls />
-
 
 			{/* Empty Canvas Hero - shown when no elements */}
 			{elements.length === 0 && <EmptyCanvasHero />}

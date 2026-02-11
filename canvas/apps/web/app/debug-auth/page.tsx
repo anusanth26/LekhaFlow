@@ -3,8 +3,20 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.client";
 
+interface AuthInfo {
+	hasSession: boolean;
+	hasToken: boolean;
+	token: string | null;
+	user: {
+		id: string;
+		email: string | undefined;
+		metadata: Record<string, unknown>;
+	} | null;
+	error: string | undefined;
+}
+
 export default function DebugAuthPage() {
-	const [authInfo, setAuthInfo] = useState<any>(null);
+	const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -18,14 +30,14 @@ export default function DebugAuthPage() {
 				hasSession: !!session,
 				hasToken: !!session?.access_token,
 				token: session?.access_token
-					? session.access_token.substring(0, 50) + "..."
+					? `${session.access_token.substring(0, 50)}...`
 					: null,
 				user: session?.user
 					? {
 							id: session.user.id,
 							email: session.user.email,
 							metadata: session.user.user_metadata,
-					  }
+						}
 					: null,
 				error: error?.message,
 			});

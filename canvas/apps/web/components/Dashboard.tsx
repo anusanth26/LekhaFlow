@@ -194,6 +194,7 @@ export function Dashboard() {
 							{/* Thumbnail */}
 							<div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
 								{canvas.thumbnail_url ? (
+									/* biome-ignore lint/performance/noImgElement: Dynamic canvas thumbnails from external URLs */
 									<img
 										src={canvas.thumbnail_url}
 										alt={canvas.name || "Canvas preview"}
@@ -273,7 +274,7 @@ export function Dashboard() {
 							<div className="flex items-center gap-4 min-w-0">
 								<div className="h-10 w-14 bg-gray-50 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
 									{canvas.thumbnail_url ? (
-										<img
+										/* biome-ignore lint/performance/noImgElement: Dynamic canvas thumbnails from external URLs */ <img
 											src={canvas.thumbnail_url}
 											alt={canvas.name || "Canvas preview"}
 											className="w-full h-full object-cover"

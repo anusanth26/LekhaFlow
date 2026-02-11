@@ -24,14 +24,19 @@ const server = Server.configure({
 			throw new Error("Unauthorized: No token provided");
 		}
 
-		console.log("[Hocuspocus] Token preview:", token.substring(0, 30) + "...");
+		console.log("[Hocuspocus] Token preview:", `${token.substring(0, 30)}...`);
 
 		const {
 			data: { user },
 			error,
 		} = await supabase.auth.getUser(token);
 
-		console.log("[Hocuspocus] Supabase auth result - User:", !!user, "Error:", error?.message);
+		console.log(
+			"[Hocuspocus] Supabase auth result - User:",
+			!!user,
+			"Error:",
+			error?.message,
+		);
 
 		if (error || !user) {
 			console.error("[Hocuspocus] Auth failed:", error?.message || "No user");
@@ -127,7 +132,10 @@ const server = Server.configure({
 						);
 						return new Uint8Array(buffer);
 					} catch (e) {
-						console.error("[Hocuspocus] Failed to decode hex, starting fresh:", e);
+						console.error(
+							"[Hocuspocus] Failed to decode hex, starting fresh:",
+							e,
+						);
 						// Return null to start with empty document instead of failing
 						return null;
 					}

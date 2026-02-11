@@ -15,8 +15,8 @@ import type {
 	LineElement,
 	TextElement,
 } from "@repo/common";
-import { Download, FileCode, FileJson, Image, Loader2, X } from "lucide-react";
 import type Konva from "konva";
+import { Download, FileCode, FileJson, Image, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -66,7 +66,9 @@ export function ExportModal({
 	stageRef,
 	initialFormat,
 }: ExportModalProps) {
-	const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(initialFormat || "png");
+	const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(
+		initialFormat || "png",
+	);
 	const [isExporting, setIsExporting] = useState(false);
 	const [scale, setScale] = useState(2);
 	const [includeBackground, setIncludeBackground] = useState(true);
@@ -282,11 +284,15 @@ export function ExportModal({
 					? "none"
 					: el.backgroundColor || "none";
 			const opacity = (el.opacity || 100) / 100;
-			const transform = el.angle ? ` transform="rotate(${el.angle} ${x + (el.width || 0) / 2} ${y + (el.height || 0) / 2})"` : "";
+			const transform = el.angle
+				? ` transform="rotate(${el.angle} ${x + (el.width || 0) / 2} ${y + (el.height || 0) / 2})"`
+				: "";
 
 			switch (el.type) {
 				case "rectangle": {
-					const rx = (el as { roundness?: { value: number } | null }).roundness?.value || 0;
+					const rx =
+						(el as { roundness?: { value: number } | null }).roundness?.value ||
+						0;
 					svg += `<rect x="${x}" y="${y}" width="${Math.abs(el.width)}" height="${Math.abs(el.height)}" rx="${rx}" stroke="${stroke}" stroke-width="${strokeWidth}" fill="${fill}" opacity="${opacity}"${transform}/>`;
 					break;
 				}
@@ -308,10 +314,14 @@ export function ExportModal({
 				case "line": {
 					const lineEl = el as LineElement;
 					if (lineEl.points.length >= 2) {
-						const pathPoints = lineEl.points.map((pt) => `${x + pt.x},${y + pt.y}`).join(" ");
+						const pathPoints = lineEl.points
+							.map((pt) => `${x + pt.x},${y + pt.y}`)
+							.join(" ");
 						let markers = "";
-						if (lineEl.startArrowhead && lineEl.startArrowhead !== "none") markers += ` marker-start="url(#arrowhead-start)"`;
-						if (lineEl.endArrowhead && lineEl.endArrowhead !== "none") markers += ` marker-end="url(#arrowhead)"`;
+						if (lineEl.startArrowhead && lineEl.startArrowhead !== "none")
+							markers += ` marker-start="url(#arrowhead-start)"`;
+						if (lineEl.endArrowhead && lineEl.endArrowhead !== "none")
+							markers += ` marker-end="url(#arrowhead)"`;
 						svg += `<polyline points="${pathPoints}" stroke="${stroke}" stroke-width="${strokeWidth}" fill="none" opacity="${opacity}"${markers} stroke-linecap="round" stroke-linejoin="round"/>`;
 					}
 					break;
@@ -319,9 +329,12 @@ export function ExportModal({
 				case "arrow": {
 					const arrowEl = el as ArrowElement;
 					if (arrowEl.points.length >= 2) {
-						const pathPoints = arrowEl.points.map((pt) => `${x + pt.x},${y + pt.y}`).join(" ");
+						const pathPoints = arrowEl.points
+							.map((pt) => `${x + pt.x},${y + pt.y}`)
+							.join(" ");
 						let markers = ` marker-end="url(#arrowhead)"`;
-						if (arrowEl.startArrowhead && arrowEl.startArrowhead !== "none") markers += ` marker-start="url(#arrowhead-start)"`;
+						if (arrowEl.startArrowhead && arrowEl.startArrowhead !== "none")
+							markers += ` marker-start="url(#arrowhead-start)"`;
 						svg += `<polyline points="${pathPoints}" stroke="${stroke}" stroke-width="${strokeWidth}" fill="none" opacity="${opacity}"${markers} stroke-linecap="round" stroke-linejoin="round" style="color:${stroke}"/>`;
 					}
 					break;
@@ -329,10 +342,12 @@ export function ExportModal({
 				case "freedraw": {
 					const fdEl = el as FreedrawElement;
 					if (fdEl.points.length >= 2) {
-						const first = fdEl.points[0]!;
+						const first = fdEl.points[0];
+						if (!first) break;
 						let d = `M ${x + first[0]} ${y + first[1]}`;
 						for (let i = 1; i < fdEl.points.length; i++) {
-							const pt = fdEl.points[i]!;
+							const pt = fdEl.points[i];
+							if (!pt) continue;
 							d += ` L ${x + pt[0]} ${y + pt[1]}`;
 						}
 						svg += `<path d="${d}" stroke="${stroke}" stroke-width="${strokeWidth}" fill="none" opacity="${opacity}" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -354,7 +369,10 @@ export function ExportModal({
 					svg += `<text x="${textX}" y="${y}" fill="${stroke}" font-size="${fontSize}" text-anchor="${anchor}" opacity="${opacity}"${transform}>`;
 					for (let i = 0; i < lines.length; i++) {
 						const line = lines[i] ?? "";
-						const escaped = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+						const escaped = line
+							.replace(/&/g, "&amp;")
+							.replace(/</g, "&lt;")
+							.replace(/>/g, "&gt;");
 						svg += `<tspan x="${textX}" dy="${i === 0 ? fontSize : fontSize * 1.2}">${escaped}</tspan>`;
 					}
 					svg += `</text>`;
@@ -415,6 +433,8 @@ export function ExportModal({
 								Preview
 							</p>
 							<div className="relative w-full h-[140px] rounded-xl overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
+								{" "}
+								{/* biome-ignore lint/performance/noImgElement: Dynamic canvas preview from blob URL */}{" "}
 								<img
 									src={previewUrl}
 									alt="Canvas preview"

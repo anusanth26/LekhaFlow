@@ -103,9 +103,7 @@ export function Toolbar() {
 					return (
 						<React.Fragment key={`${tool.id}-${index}`}>
 							{/* Separator after selection tools (after index 2) */}
-							{index === 3 && (
-								<div className="h-6 w-px bg-gray-200 mx-1" />
-							)}
+							{index === 3 && <div className="h-6 w-px bg-gray-200 mx-1" />}
 							{/* Separator before eraser (before last tool) */}
 							{index === TOOLS.length - 1 && (
 								<div className="h-6 w-px bg-gray-200 mx-1" />

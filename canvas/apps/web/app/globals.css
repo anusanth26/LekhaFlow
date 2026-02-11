@@ -5,43 +5,43 @@
 	/* ====================================================================
 	   DESIGN SYSTEM - Color Palette
 	   ==================================================================== */
-	
+
 	/* Core Colors */
 	--color-canvas: #ffffff;
 	--color-accent: #6965db;
 	--color-accent-hover: #5851c9;
 	--color-accent-active: #4a44b8;
-	
+
 	/* Text Colors */
 	--color-text-primary: #404040;
 	--color-text-secondary: #a8a8a8;
 	--color-text-on-accent: #ffffff;
-	
+
 	/* Background Colors */
 	--color-bg-surface: #ffffff;
 	--color-bg-elevated: #ffffff;
 	--color-bg-muted: #f3f4f6;
-	
+
 	/* Border Colors */
 	--color-border-light: #e5e7eb;
 	--color-border-default: #d1d5db;
 	--color-border-strong: #9ca3af;
-	
+
 	/* Status Colors */
 	--color-success: #10b981;
 	--color-warning: #f59e0b;
 	--color-error: #ef4444;
 	--color-info: #3b82f6;
-	
+
 	/* ====================================================================
 	   DESIGN SYSTEM - Typography
 	   ==================================================================== */
-	
+
 	/* Font Families */
 	--font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	--font-handwritten: "Virgil", "Caveat", "Comic Sans MS", cursive;
 	--font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-	
+
 	/* Font Sizes */
 	--text-xs: 0.75rem; /* 12px */
 	--text-sm: 0.875rem; /* 14px */
@@ -52,40 +52,42 @@
 	--text-3xl: 1.875rem; /* 30px */
 	--text-4xl: 2.25rem; /* 36px */
 	--text-5xl: 3rem; /* 48px */
-	
+
 	/* Line Heights */
 	--leading-tight: 1.25;
 	--leading-normal: 1.5;
 	--leading-relaxed: 1.75;
-	
+
 	/* ====================================================================
 	   DESIGN SYSTEM - Spacing
 	   ==================================================================== */
-	
+
 	--space-xs: 8px;
 	--space-sm: 12px;
 	--space-md: 16px;
 	--space-lg: 24px;
 	--space-xl: 32px;
 	--space-2xl: 48px;
-	
+
 	/* ====================================================================
 	   DESIGN SYSTEM - Elevation (Shadows)
 	   ==================================================================== */
-	
+
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.08);
 	--shadow-md: 0 2px 4px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.1);
 	--shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12);
 	--shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.1), 0 16px 48px rgba(0, 0, 0, 0.15);
-	
+
 	/* Accent shadows (purple glow) */
-	--shadow-accent: 0 4px 12px rgba(105, 101, 219, 0.2), 0 2px 4px rgba(105, 101, 219, 0.15);
-	--shadow-accent-strong: 0 8px 24px rgba(105, 101, 219, 0.25), 0 4px 8px rgba(105, 101, 219, 0.2);
-	
+	--shadow-accent:
+		0 4px 12px rgba(105, 101, 219, 0.2), 0 2px 4px rgba(105, 101, 219, 0.15);
+	--shadow-accent-strong:
+		0 8px 24px rgba(105, 101, 219, 0.25), 0 4px 8px rgba(105, 101, 219, 0.2);
+
 	/* ====================================================================
 	   DESIGN SYSTEM - Border Radius
 	   ==================================================================== */
-	
+
 	--radius-sm: 4px;
 	--radius-md: 8px;
 	--radius-lg: 12px;
@@ -93,22 +95,22 @@
 	--radius-2xl: 24px;
 	--radius-pill: 9999px;
 	--radius-circle: 50%;
-	
+
 	/* ====================================================================
 	   DESIGN SYSTEM - Z-Index Layers
 	   ==================================================================== */
-	
+
 	--z-canvas: 1;
 	--z-controls: 10;
 	--z-toolbar: 20;
 	--z-panels: 30;
 	--z-modals: 40;
 	--z-tooltips: 50;
-	
+
 	/* ====================================================================
 	   LEGACY COMPATIBILITY (maintain old vars for gradual migration)
 	   ==================================================================== */
-	
+
 	--background: var(--color-canvas);
 	--foreground: var(--color-text-primary);
 	--card: var(--color-bg-surface);

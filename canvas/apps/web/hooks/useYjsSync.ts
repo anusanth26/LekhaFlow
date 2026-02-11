@@ -134,7 +134,10 @@ export function useYjsSync(
 			return;
 		}
 
-		console.log("[Hocuspocus] Attempting to connect with token:", token.substring(0, 20) + "...");
+		console.log(
+			"[Hocuspocus] Attempting to connect with token:",
+			`${token.substring(0, 20)}...`,
+		);
 
 		// Create HocuspocusProvider
 		const provider = new HocuspocusProvider({
@@ -162,7 +165,10 @@ export function useYjsSync(
 			},
 			onAuthenticationFailed: (data: { reason: string }) => {
 				console.error("[Hocuspocus] Auth failed:", data.reason);
-				console.error("[Hocuspocus] Token used:", token.substring(0, 20) + "...");
+				console.error(
+					"[Hocuspocus] Token used:",
+					`${token.substring(0, 20)}...`,
+				);
 				console.error("[Hocuspocus] WS URL:", WS_URL);
 				console.error("[Hocuspocus] Room ID:", roomId);
 				setConnectionStatus(false, false);

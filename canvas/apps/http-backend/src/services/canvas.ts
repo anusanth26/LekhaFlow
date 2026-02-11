@@ -110,7 +110,8 @@ export const updateCanvasService = async (
 	const updateFields: Record<string, string | undefined> = {};
 	if (update.name !== undefined) updateFields.name = update.name;
 	if (update.data !== undefined) updateFields.data = update.data;
-	if (update.thumbnail_url !== undefined) updateFields.thumbnail_url = update.thumbnail_url;
+	if (update.thumbnail_url !== undefined)
+		updateFields.thumbnail_url = update.thumbnail_url;
 
 	const { error } = await serviceClient
 		.from("canvases")
