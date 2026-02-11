@@ -305,3 +305,12 @@ input[type="range"]::-moz-range-thumb {
 	box-shadow: var(--shadow-lg);
 	border-radius: var(--radius-lg);
 }
+
+/* Hide scrollbar but keep scrolling */
+.scrollbar-hide {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+	display: none;
+}

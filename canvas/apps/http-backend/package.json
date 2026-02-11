@@ -5,7 +5,7 @@
 	"main": "index.js",
 	"scripts": {
 		"start": "dotenv -e ../../supabase2.env -- node dist/index.js",
-		"test": "vitest",
+		"test": "vitest run",
 		"build": "tsc -b",
 		"dev": "npm run build && npm run start"
 	},
