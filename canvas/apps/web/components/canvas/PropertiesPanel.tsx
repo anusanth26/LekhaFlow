@@ -8,7 +8,7 @@
 
 "use client";
 
-import { ChevronRight, Palette, X } from "lucide-react";
+import { ChevronRight, Lock, Palette, X } from "lucide-react";
 import { useState } from "react";
 import { useCanvasStore } from "../../store/canvas-store";
 
@@ -51,11 +51,26 @@ export function PropertiesPanel() {
 		setStrokeWidth,
 		setStrokeStyle,
 		setOpacity,
+		isReadOnly,
 	} = useCanvasStore();
+
+	// In read-only mode, show a locked badge instead of the panel
+	if (isReadOnly) {
+		return (
+			<div className="absolute top-[136px] sm:top-20 right-4 z-50">
+				<div className="glass-card-elevated rounded-2xl px-4 py-3 flex items-center gap-2.5 opacity-60 cursor-not-allowed">
+					<Lock size={16} className="text-red-400" />
+					<span className="text-[13px] font-semibold text-gray-400">
+						Locked
+					</span>
+				</div>
+			</div>
+		);
+	}
 
 	if (isCollapsed) {
 		return (
-			<div className="absolute top-20 right-4 z-50">
+			<div className="absolute top-[136px] sm:top-20 right-4 z-50">
 				<button
 					type="button"
 					onClick={() => setIsCollapsed(false)}
@@ -71,7 +86,7 @@ export function PropertiesPanel() {
 	}
 
 	return (
-		<div className="absolute top-20 right-4 z-50">
+		<div className="absolute top-[136px] sm:top-20 right-4 z-50">
 			<div className="glass-card-elevated rounded-2xl w-[232px] p-4 animate-scale-in">
 				{/* Header */}
 				<div className="flex items-center justify-between mb-4">

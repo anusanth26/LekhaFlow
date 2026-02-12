@@ -66,6 +66,11 @@ interface HistoryEntry {
 }
 
 /**
+ * Saving status for auto-save indicator
+ */
+export type SavingStatus = "idle" | "saving" | "saved" | "error";
+
+/**
  * Canvas store state
  */
 interface CanvasState {
@@ -91,6 +96,20 @@ interface CanvasState {
 
 	/** Redo stack */
 	redoStack: HistoryEntry[];
+
+	// ─────────────────────────────────────────────────────────────────
+	// SAVING STATUS
+	// ─────────────────────────────────────────────────────────────────
+
+	/** Current saving status for auto-save indicator */
+	savingStatus: SavingStatus;
+
+	// ─────────────────────────────────────────────────────────────────
+	// READ-ONLY MODE
+	// ─────────────────────────────────────────────────────────────────
+
+	/** Whether the canvas is in read-only (locked) mode */
+	isReadOnly: boolean;
 
 	// ─────────────────────────────────────────────────────────────────
 	// TOOL STATE
@@ -167,9 +186,6 @@ interface CanvasState {
 
 	/** Current room ID */
 	roomId: string | null;
-
-	/** Whether canvas is in read-only mode (Story 4.6) */
-	isReadOnly: boolean;
 
 	// ─────────────────────────────────────────────────────────────────
 	// MY IDENTITY
@@ -319,11 +335,14 @@ interface CanvasActions {
 	/** Set room ID */
 	setRoomId: (roomId: string | null) => void;
 
-	/** Set read-only mode (Story 4.6) */
-	setReadOnly: (isReadOnly: boolean) => void;
-
 	/** Set my identity */
 	setMyIdentity: (name: string, color: string) => void;
+
+	/** Set saving status */
+	setSavingStatus: (status: SavingStatus) => void;
+
+	/** Toggle read-only (lock) mode */
+	setReadOnly: (isReadOnly: boolean) => void;
 }
 
 // ============================================================================
@@ -358,6 +377,12 @@ export const initialState: CanvasState = {
 	undoStack: [],
 	redoStack: [],
 
+	// Saving
+	savingStatus: "idle" as SavingStatus,
+
+	// Read-only mode
+	isReadOnly: false,
+
 	// Tool
 	activeTool: "selection",
 	currentStrokeColor: "#1e1e1e",
@@ -385,7 +410,6 @@ export const initialState: CanvasState = {
 	isConnected: false,
 	isSynced: false,
 	roomId: null,
-	isReadOnly: false,
 
 	// Identity - set by CanvasAuthWrapper from actual user data
 	myName: "User",
@@ -398,7 +422,7 @@ export const initialState: CanvasState = {
  * Using subscribeWithSelector middleware for efficient subscriptions
  */
 export const useCanvasStore = create<CanvasState & CanvasActions>()(
-	subscribeWithSelector((set, _get) => ({
+	subscribeWithSelector((set, get) => ({
 		...initialState,
 
 		// ─────────────────────────────────────────────────────────────────
@@ -609,9 +633,35 @@ export const useCanvasStore = create<CanvasState & CanvasActions>()(
 
 		setRoomId: (roomId) => set({ roomId }),
 
-		setReadOnly: (isReadOnly) => set({ isReadOnly }),
-
 		setMyIdentity: (name, color) => set({ myName: name, myColor: color }),
+
+		setSavingStatus: (status) => set({ savingStatus: status }),
+
+		setReadOnly: (isReadOnly) => {
+			// Persist lock state to localStorage per room
+			const roomId = get().roomId;
+			if (roomId) {
+				try {
+					localStorage.setItem(
+						`lekhaflow-lock-${roomId}`,
+						JSON.stringify(isReadOnly),
+					);
+				} catch {}
+			}
+			set((state) => ({
+				isReadOnly,
+				// When entering read-only mode, force hand tool and clear selection
+				...(isReadOnly
+					? {
+							activeTool: "hand" as Tool,
+							selectedElementIds: new Set<string>(),
+							isDrawing: false,
+							isDragging: false,
+							isResizing: false,
+						}
+					: { activeTool: state.activeTool }),
+			}));
+		},
 	})),
 );
 

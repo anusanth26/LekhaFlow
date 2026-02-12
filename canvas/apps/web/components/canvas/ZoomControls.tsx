@@ -13,15 +13,15 @@ import { Redo, Undo, ZoomIn, ZoomOut } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas-store";
 
 interface ZoomControlsProps {
-	onUndo?: () => void;
-	onRedo?: () => void;
+	undo?: () => void;
+	redo?: () => void;
 	canUndo?: boolean;
 	canRedo?: boolean;
 }
 
 export function ZoomControls({
-	onUndo,
-	onRedo,
+	undo,
+	redo,
 	canUndo = false,
 	canRedo = false,
 }: ZoomControlsProps) {
@@ -33,7 +33,7 @@ export function ZoomControls({
 	return (
 		<div
 			className="fixed z-[var(--z-controls)]"
-			style={{ bottom: "24px", right: "24px" }}
+			style={{ bottom: "16px", right: "16px" }}
 		>
 			{/* Zoom Controls - Pill Shape */}
 			<div
@@ -90,7 +90,7 @@ export function ZoomControls({
 				{/* Undo */}
 				<button
 					type="button"
-					onClick={onUndo}
+					onClick={() => undo?.()}
 					disabled={!canUndo}
 					title="Undo (Ctrl Z)"
 					className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all border-none bg-transparent ${
@@ -106,7 +106,7 @@ export function ZoomControls({
 				{/* Redo */}
 				<button
 					type="button"
-					onClick={onRedo}
+					onClick={() => redo?.()}
 					disabled={!canRedo}
 					title="Redo (Ctrl Shift Z)"
 					className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all border-none bg-transparent ${

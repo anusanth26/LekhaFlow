@@ -12,7 +12,7 @@
 	},
 	"scripts": {
 		"build": "tsc -b",
-		"test": "echo \"Error: no test specified\" && exit 1",
+		"test": "echo \"No tests yet\"",
 		"update-types": "npx supabase gen types typescript --project-id \"khajsxndtqzfkdnpwqdk\" --schema public > src/types.ts"
 	},
 	"keywords": [],
