@@ -11,20 +11,51 @@
 import { HelpCircle, Keyboard, X } from "lucide-react";
 import { useState } from "react";
 
-const SHORTCUTS = [
-	{ keys: ["V"], action: "Select" },
-	{ keys: ["H"], action: "Pan" },
-	{ keys: ["R"], action: "Rectangle" },
-	{ keys: ["O"], action: "Ellipse" },
-	{ keys: ["L"], action: "Line" },
-	{ keys: ["A"], action: "Arrow" },
-	{ keys: ["P"], action: "Pencil" },
-	{ keys: ["T"], action: "Text" },
-	{ keys: ["E"], action: "Eraser" },
-	{ keys: ["Ctrl", "Z"], action: "Undo" },
-	{ keys: ["Ctrl", "⇧", "Z"], action: "Redo" },
-	{ keys: ["Del"], action: "Delete" },
-	{ keys: ["Esc"], action: "Deselect" },
+interface ShortcutSection {
+	title: string;
+	shortcuts: { keys: string[]; action: string }[];
+}
+
+const SHORTCUT_SECTIONS: ShortcutSection[] = [
+	{
+		title: "Tools",
+		shortcuts: [
+			{ keys: ["V"], action: "Select" },
+			{ keys: ["H"], action: "Pan" },
+			{ keys: ["R"], action: "Rectangle" },
+			{ keys: ["O"], action: "Ellipse" },
+			{ keys: ["L"], action: "Line" },
+			{ keys: ["A"], action: "Arrow" },
+			{ keys: ["P"], action: "Pencil" },
+			{ keys: ["T"], action: "Text" },
+			{ keys: ["E"], action: "Eraser" },
+			{ keys: ["K"], action: "Laser" },
+		],
+	},
+	{
+		title: "Edit",
+		shortcuts: [
+			{ keys: ["Ctrl", "Z"], action: "Undo" },
+			{ keys: ["Ctrl", "⇧", "Z"], action: "Redo" },
+			{ keys: ["Ctrl", "A"], action: "Select All" },
+			{ keys: ["Ctrl", "C"], action: "Copy" },
+			{ keys: ["Ctrl", "V"], action: "Paste" },
+			{ keys: ["Ctrl", "D"], action: "Duplicate" },
+			{ keys: ["Del"], action: "Delete" },
+			{ keys: ["Esc"], action: "Deselect" },
+		],
+	},
+	{
+		title: "Layer",
+		shortcuts: [
+			{ keys: ["Ctrl", "]"], action: "Bring Forward" },
+			{ keys: ["Ctrl", "["], action: "Send Backward" },
+		],
+	},
+	{
+		title: "Other",
+		shortcuts: [{ keys: ["Ctrl", "E"], action: "Export" }],
+	},
 ];
 
 export function HelpPanel() {
@@ -71,28 +102,41 @@ export function HelpPanel() {
 					</div>
 
 					{/* Shortcuts List */}
-					<div className="max-h-[300px] overflow-y-auto">
-						{SHORTCUTS.map((shortcut, index) => (
-							<div
-								key={shortcut.action}
-								className={`flex items-center justify-between py-2.5 ${
-									index < SHORTCUTS.length - 1 ? "border-b border-gray-100" : ""
-								}`}
-							>
-								<span className="text-sm text-gray-600 font-medium">
-									{shortcut.action}
-								</span>
-								<div className="flex gap-1">
-									{shortcut.keys.map((key) => (
-										<kbd
-											key={key}
-											className="px-2 py-1 text-xs font-mono font-semibold text-violet-600 bg-violet-50 border border-violet-200"
-											style={{ borderRadius: "var(--radius-sm)" }}
-										>
-											{key}
-										</kbd>
-									))}
+					<div className="max-h-[400px] overflow-y-auto">
+						{SHORTCUT_SECTIONS.map((section, sIdx) => (
+							<div key={section.title}>
+								{/* Section Title */}
+								<div
+									className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
+									style={{ marginTop: sIdx > 0 ? "12px" : "0" }}
+								>
+									{section.title}
 								</div>
+								{section.shortcuts.map((shortcut, index) => (
+									<div
+										key={shortcut.action}
+										className={`flex items-center justify-between py-2 ${
+											index < section.shortcuts.length - 1
+												? "border-b border-gray-50"
+												: ""
+										}`}
+									>
+										<span className="text-sm text-gray-600 font-medium">
+											{shortcut.action}
+										</span>
+										<div className="flex gap-1">
+											{shortcut.keys.map((key) => (
+												<kbd
+													key={key}
+													className="px-2 py-1 text-xs font-mono font-semibold text-violet-600 bg-violet-50 border border-violet-200"
+													style={{ borderRadius: "var(--radius-sm)" }}
+												>
+													{key}
+												</kbd>
+											))}
+										</div>
+									</div>
+								))}
 							</div>
 						))}
 					</div>

@@ -4,6 +4,7 @@
  * ============================================================================
  *
  * Bottom-right floating zoom controls with undo/redo buttons.
+ * Undo/Redo are wired to Yjs UndoManager via props from Canvas.
  */
 
 "use client";
