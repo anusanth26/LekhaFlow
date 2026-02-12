@@ -520,6 +520,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		updateSelection,
 		undo,
 		redo,
+		canUndo,
+		canRedo,
 	} = useYjsSync(roomId, token ?? null);
 
 	// ─────────────────────────────────────────────────────────────────
@@ -549,11 +551,59 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		setInteractionStartPoint,
 		isConnected,
 		isSynced,
+		isReadOnly,
 	} = useCanvasStore();
 
 	// Elements and collaborators from store
 	const elements = useElementsArray();
 	const collaborators = useCollaboratorsArray();
+
+	// ─────────────────────────────────────────────────────────────────
+	// VIEWPORT PERSISTENCE (User Story 4.2)
+	// Restore camera position from localStorage on mount
+	// ─────────────────────────────────────────────────────────────────
+	const viewportRestoredRef = useRef(false);
+
+	useEffect(() => {
+		if (viewportRestoredRef.current) return;
+		viewportRestoredRef.current = true;
+
+		try {
+			const saved = localStorage.getItem(`lekhaflow-viewport-${roomId}`);
+			if (saved) {
+				const {
+					zoom: savedZoom,
+					scrollX: savedScrollX,
+					scrollY: savedScrollY,
+				} = JSON.parse(saved);
+				if (typeof savedZoom === "number")
+					useCanvasStore.getState().setZoom(savedZoom);
+				if (
+					typeof savedScrollX === "number" &&
+					typeof savedScrollY === "number"
+				) {
+					setScroll(savedScrollX, savedScrollY);
+				}
+			}
+		} catch {
+			// Ignore parse errors from corrupted localStorage
+		}
+	}, [roomId, setScroll]);
+
+	// Debounce-save viewport to localStorage on changes
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			try {
+				localStorage.setItem(
+					`lekhaflow-viewport-${roomId}`,
+					JSON.stringify({ zoom, scrollX, scrollY }),
+				);
+			} catch {
+				// Ignore quota errors
+			}
+		}, 500);
+		return () => clearTimeout(timer);
+	}, [roomId, zoom, scrollX, scrollY]);
 
 	// Helper to get the next zIndex for new elements (always on top)
 	const getNextZIndex = useCallback(() => {
@@ -1284,6 +1334,11 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			const point = getCanvasPoint(e);
 			setInteractionStartPoint(point);
 
+			// Read-only mode: only allow selection tool and hand tool (Story 4.6)
+			if (isReadOnly && activeTool !== "selection" && activeTool !== "hand") {
+				return;
+			}
+
 			// SHIFT+CLICK while drawing a line/arrow: Add a new point (create multi-segment line)
 			if (
 				isDrawing &&
@@ -1463,6 +1518,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			deleteElements,
 			isDrawing,
 			drawingElement,
+			isReadOnly,
 		],
 	);
 
@@ -2020,9 +2076,41 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			{/* UI Components */}
 			<HeaderLeft onClearCanvas={handleClearCanvas} onExport={handleExport} />
 			<HeaderRight />
-			<Toolbar />
-			<PropertiesPanel />
-			<ZoomControls />
+			{!isReadOnly && <Toolbar />}
+			{!isReadOnly && <PropertiesPanel />}
+			<ZoomControls
+				onUndo={isReadOnly ? undefined : undo}
+				onRedo={isReadOnly ? undefined : redo}
+				canUndo={!isReadOnly && canUndo}
+				canRedo={!isReadOnly && canRedo}
+			/>
+
+			{/* Read-Only Banner (Story 4.6) */}
+			{isReadOnly && (
+				<div
+					className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 shadow-sm"
+					style={{ borderRadius: "var(--radius-lg)" }}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						role="img"
+						aria-label="Lock icon"
+					>
+						<title>Read-only</title>
+						<rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+					</svg>
+					Read-only mode — viewing only
+				</div>
+			)}
 
 			{/* Empty Canvas Hero - shown when no elements */}
 			{elements.length === 0 && <EmptyCanvasHero />}

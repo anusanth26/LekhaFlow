@@ -1,6 +1,16 @@
-import { File, Grid, List, Plus, Share2, Trash2 } from "lucide-react";
+import {
+	File,
+	Grid,
+	List,
+	Plus,
+	Search,
+	Share2,
+	Star,
+	Trash2,
+	X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase.client";
 import { Button } from "./ui/Button";
 
@@ -14,12 +24,41 @@ interface Canvas {
 	owner_id: string;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// STARRED CANVASES — localStorage persistence (User Story 5.8)
+// ─────────────────────────────────────────────────────────────────
+
+function getStarredIds(): Set<string> {
+	try {
+		const raw = localStorage.getItem("lekhaflow-starred");
+		return raw ? new Set(JSON.parse(raw)) : new Set();
+	} catch {
+		return new Set();
+	}
+}
+
+function saveStarredIds(ids: Set<string>) {
+	try {
+		localStorage.setItem("lekhaflow-starred", JSON.stringify([...ids]));
+	} catch {
+		// ignore quota errors
+	}
+}
+
 export function Dashboard() {
 	const [canvases, setCanvases] = useState<Canvas[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
+	const [filterStarred, setFilterStarred] = useState(false);
 	const router = useRouter();
+
+	// Load starred IDs from localStorage on mount
+	useEffect(() => {
+		setStarredIds(getStarredIds());
+	}, []);
 
 	useEffect(() => {
 		const fetchCanvases = async () => {
@@ -75,6 +114,20 @@ export function Dashboard() {
 		}
 	};
 
+	const toggleStar = (id: string, e: React.MouseEvent) => {
+		e.stopPropagation();
+		setStarredIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) {
+				next.delete(id);
+			} else {
+				next.add(id);
+			}
+			saveStarredIds(next);
+			return next;
+		});
+	};
+
 	const formatDate = (dateStr: string) => {
 		const date = new Date(dateStr);
 		const now = new Date();
@@ -87,10 +140,41 @@ export function Dashboard() {
 		return date.toLocaleDateString();
 	};
 
+	// ─────────────────────────────────────────────────────────────
+	// SEARCH & FILTER (User Story 5.3)
+	// Client-side filtering by canvas name
+	// ─────────────────────────────────────────────────────────────
+	const filteredCanvases = useMemo(() => {
+		let result = canvases;
+
+		// Filter by search query
+		if (searchQuery.trim()) {
+			const q = searchQuery.toLowerCase().trim();
+			result = result.filter((c) =>
+				(c.name || "Untitled").toLowerCase().includes(q),
+			);
+		}
+
+		// Filter starred only
+		if (filterStarred) {
+			result = result.filter((c) => starredIds.has(c.id));
+		}
+
+		// Sort: starred first, then by updated_at
+		return result.sort((a, b) => {
+			const aStarred = starredIds.has(a.id) ? 1 : 0;
+			const bStarred = starredIds.has(b.id) ? 1 : 0;
+			if (aStarred !== bStarred) return bStarred - aStarred;
+			return (
+				new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+			);
+		});
+	}, [canvases, searchQuery, filterStarred, starredIds]);
+
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center p-16">
-				<div className="h-8 w-8 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+				<div className="h-8 w-8 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
 			</div>
 		);
 	}
@@ -146,16 +230,55 @@ export function Dashboard() {
 
 	return (
 		<div className="space-y-4">
-			{/* Toolbar */}
-			<div className="flex items-center justify-end">
+			{/* Toolbar — Search + Filters + View Toggle */}
+			<div className="flex items-center gap-3">
+				{/* Search Bar (Story 5.3) */}
+				<div className="relative flex-1 max-w-md">
+					<Search
+						size={16}
+						className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+					/>
+					<input
+						type="text"
+						placeholder="Search canvases..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-all placeholder:text-gray-400"
+					/>
+					{searchQuery && (
+						<button
+							type="button"
+							onClick={() => setSearchQuery("")}
+							className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none cursor-pointer"
+						>
+							<X size={14} />
+						</button>
+					)}
+				</div>
+
+				{/* Starred Filter (Story 5.8) */}
+				<button
+					type="button"
+					onClick={() => setFilterStarred(!filterStarred)}
+					title={filterStarred ? "Show all canvases" : "Show starred only"}
+					className={`p-2 rounded-lg border transition-all cursor-pointer ${
+						filterStarred
+							? "bg-amber-50 border-amber-200 text-amber-500"
+							: "bg-white border-gray-200 text-gray-400 hover:text-amber-400 hover:border-amber-200"
+					}`}
+				>
+					<Star size={16} fill={filterStarred ? "currentColor" : "none"} />
+				</button>
+
+				{/* View Toggle (Story 5.7) */}
 				<div className="flex bg-gray-100 border border-gray-200 rounded-lg p-0.5">
 					<button
 						type="button"
 						onClick={() => setViewMode("grid")}
-						className={`p-2 rounded-md transition-colors ${
+						className={`p-2 rounded-md transition-colors cursor-pointer border-none ${
 							viewMode === "grid"
 								? "bg-white text-violet-600 shadow-sm"
-								: "text-gray-500 hover:text-gray-700"
+								: "bg-transparent text-gray-500 hover:text-gray-700"
 						}`}
 					>
 						<Grid size={16} />
@@ -163,10 +286,10 @@ export function Dashboard() {
 					<button
 						type="button"
 						onClick={() => setViewMode("list")}
-						className={`p-2 rounded-md transition-colors ${
+						className={`p-2 rounded-md transition-colors cursor-pointer border-none ${
 							viewMode === "list"
 								? "bg-white text-violet-600 shadow-sm"
-								: "text-gray-500 hover:text-gray-700"
+								: "bg-transparent text-gray-500 hover:text-gray-700"
 						}`}
 					>
 						<List size={16} />
@@ -174,10 +297,51 @@ export function Dashboard() {
 				</div>
 			</div>
 
+			{/* Search Results Info */}
+			{(searchQuery || filterStarred) && (
+				<div className="flex items-center gap-2 text-sm text-gray-500">
+					<span>
+						{filteredCanvases.length}{" "}
+						{filteredCanvases.length === 1 ? "canvas" : "canvases"} found
+						{searchQuery && (
+							<>
+								{" "}
+								matching &quot;
+								<strong className="text-gray-700">{searchQuery}</strong>&quot;
+							</>
+						)}
+						{filterStarred && <> (starred only)</>}
+					</span>
+					{(searchQuery || filterStarred) && (
+						<button
+							type="button"
+							onClick={() => {
+								setSearchQuery("");
+								setFilterStarred(false);
+							}}
+							className="text-violet-500 hover:text-violet-700 underline text-sm bg-transparent border-none cursor-pointer"
+						>
+							Clear filters
+						</button>
+					)}
+				</div>
+			)}
+
+			{/* No results */}
+			{filteredCanvases.length === 0 && (searchQuery || filterStarred) && (
+				<div className="flex flex-col items-center justify-center py-12 text-gray-400">
+					<Search size={32} className="mb-3 opacity-50" />
+					<p className="text-sm">
+						No canvases match your {filterStarred ? "starred filter" : "search"}
+						.
+					</p>
+				</div>
+			)}
+
 			{/* Grid View */}
 			{viewMode === "grid" ? (
 				<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-					{canvases.map((canvas) => (
+					{filteredCanvases.map((canvas) => (
 						<div
 							key={canvas.id}
 							role="button"
@@ -191,6 +355,23 @@ export function Dashboard() {
 							}}
 							className="group relative flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-violet-300 hover:shadow-lg hover:shadow-violet-100 transition-all cursor-pointer"
 						>
+							{/* Star Button */}
+							<button
+								type="button"
+								onClick={(e) => toggleStar(canvas.id, e)}
+								className={`absolute top-2 right-2 z-10 p-1.5 rounded-full transition-all border-none cursor-pointer ${
+									starredIds.has(canvas.id)
+										? "bg-amber-50 text-amber-400 opacity-100"
+										: "bg-white/80 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-amber-400"
+								}`}
+								title={starredIds.has(canvas.id) ? "Unstar" : "Star"}
+							>
+								<Star
+									size={14}
+									fill={starredIds.has(canvas.id) ? "currentColor" : "none"}
+								/>
+							</button>
+
 							{/* Thumbnail */}
 							<div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
 								{canvas.thumbnail_url ? (
@@ -245,7 +426,7 @@ export function Dashboard() {
 									<button
 										type="button"
 										onClick={(e) => handleDelete(canvas.id, e)}
-										className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+										className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all bg-transparent border-none cursor-pointer"
 									>
 										<Trash2 size={14} />
 									</button>
@@ -257,7 +438,7 @@ export function Dashboard() {
 			) : (
 				/* List View */
 				<div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-					{canvases.map((canvas) => (
+					{filteredCanvases.map((canvas) => (
 						<div
 							key={canvas.id}
 							role="button"
@@ -272,6 +453,22 @@ export function Dashboard() {
 							className="flex items-center justify-between p-4 hover:bg-violet-50/50 cursor-pointer group transition-colors"
 						>
 							<div className="flex items-center gap-4 min-w-0">
+								{/* Star */}
+								<button
+									type="button"
+									onClick={(e) => toggleStar(canvas.id, e)}
+									className={`flex-shrink-0 p-1 rounded transition-all bg-transparent border-none cursor-pointer ${
+										starredIds.has(canvas.id)
+											? "text-amber-400"
+											: "text-gray-300 opacity-0 group-hover:opacity-100 hover:text-amber-400"
+									}`}
+								>
+									<Star
+										size={14}
+										fill={starredIds.has(canvas.id) ? "currentColor" : "none"}
+									/>
+								</button>
+
 								<div className="h-10 w-14 bg-gray-50 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
 									{canvas.thumbnail_url ? (
 										/* biome-ignore lint/performance/noImgElement: Dynamic canvas thumbnails from external URLs */ <img
@@ -310,7 +507,7 @@ export function Dashboard() {
 									<button
 										type="button"
 										onClick={(e) => handleDelete(canvas.id, e)}
-										className="p-2 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50"
+										className="p-2 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 bg-transparent border-none cursor-pointer"
 									>
 										<Trash2 size={14} />
 									</button>

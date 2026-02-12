@@ -4,6 +4,7 @@
  * ============================================================================
  *
  * Bottom-right floating zoom controls with undo/redo buttons.
+ * Undo/Redo are wired to Yjs UndoManager via props from Canvas.
  */
 
 "use client";
@@ -11,7 +12,19 @@
 import { Redo, Undo, ZoomIn, ZoomOut } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas-store";
 
-export function ZoomControls() {
+interface ZoomControlsProps {
+	onUndo?: () => void;
+	onRedo?: () => void;
+	canUndo?: boolean;
+	canRedo?: boolean;
+}
+
+export function ZoomControls({
+	onUndo,
+	onRedo,
+	canUndo = false,
+	canRedo = false,
+}: ZoomControlsProps) {
 	const { zoom, setZoom, resetViewport } = useCanvasStore();
 
 	const zoomIn = () => setZoom(Math.min(5, zoom * 1.2));
@@ -77,11 +90,14 @@ export function ZoomControls() {
 				{/* Undo */}
 				<button
 					type="button"
-					onClick={() => {
-						/* TODO: Implement undo */
-					}}
+					onClick={onUndo}
+					disabled={!canUndo}
 					title="Undo (Ctrl Z)"
-					className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all border-none bg-transparent ${
+						canUndo
+							? "text-gray-500 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
+							: "text-gray-300 cursor-not-allowed"
+					}`}
 					style={{ borderRadius: "var(--radius-md)" }}
 				>
 					<Undo size={18} />
@@ -90,11 +106,14 @@ export function ZoomControls() {
 				{/* Redo */}
 				<button
 					type="button"
-					onClick={() => {
-						/* TODO: Implement redo */
-					}}
+					onClick={onRedo}
+					disabled={!canRedo}
 					title="Redo (Ctrl Shift Z)"
-					className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer border-none bg-transparent"
+					className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all border-none bg-transparent ${
+						canRedo
+							? "text-gray-500 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
+							: "text-gray-300 cursor-not-allowed"
+					}`}
 					style={{ borderRadius: "var(--radius-md)" }}
 				>
 					<Redo size={18} />

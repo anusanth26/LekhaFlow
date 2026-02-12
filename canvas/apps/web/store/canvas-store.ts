@@ -168,6 +168,9 @@ interface CanvasState {
 	/** Current room ID */
 	roomId: string | null;
 
+	/** Whether canvas is in read-only mode (Story 4.6) */
+	isReadOnly: boolean;
+
 	// ─────────────────────────────────────────────────────────────────
 	// MY IDENTITY
 	// ─────────────────────────────────────────────────────────────────
@@ -316,6 +319,9 @@ interface CanvasActions {
 	/** Set room ID */
 	setRoomId: (roomId: string | null) => void;
 
+	/** Set read-only mode (Story 4.6) */
+	setReadOnly: (isReadOnly: boolean) => void;
+
 	/** Set my identity */
 	setMyIdentity: (name: string, color: string) => void;
 }
@@ -379,6 +385,7 @@ export const initialState: CanvasState = {
 	isConnected: false,
 	isSynced: false,
 	roomId: null,
+	isReadOnly: false,
 
 	// Identity - set by CanvasAuthWrapper from actual user data
 	myName: "User",
@@ -601,6 +608,8 @@ export const useCanvasStore = create<CanvasState & CanvasActions>()(
 			})),
 
 		setRoomId: (roomId) => set({ roomId }),
+
+		setReadOnly: (isReadOnly) => set({ isReadOnly }),
 
 		setMyIdentity: (name, color) => set({ myName: name, myColor: color }),
 	})),
