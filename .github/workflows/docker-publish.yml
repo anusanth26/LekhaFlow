@@ -6,7 +6,7 @@ on:
 
 env:
     REGISTRY: ghcr.io
-    IMAGE_PREFIX: ${{ github.repository_owner }}/digital-canvas
+    IMAGE_PREFIX: ${{ github.repository }}
 
 jobs:
     build-and-push:
