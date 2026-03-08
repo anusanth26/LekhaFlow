@@ -35,7 +35,7 @@ jobs:
                       set -e
 
                       # Navigate to project directory
-                      cd ~/digital-canvas
+                      cd ~/LekhaFlow
 
                       # Pull latest code (for compose files & configs)
                       git fetch origin prod
