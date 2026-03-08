@@ -38,6 +38,7 @@ jobs:
                       cd ~/LekhaFlow
 
                       # Pull latest code (for compose files & configs)
+                      git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
                       git fetch origin prod
                       git checkout prod
                       git pull origin prod
