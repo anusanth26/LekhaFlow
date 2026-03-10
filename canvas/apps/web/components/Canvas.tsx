@@ -56,6 +56,8 @@ import type {
 } from "@repo/common";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
+import { Archive as LucideArchive } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -114,6 +116,7 @@ import {
 import { outlineToSvgPath } from "../lib/stroke-utils";
 import { supabase } from "../lib/supabase.client";
 import { buildKonvaFontStyle, layoutRuns } from "../lib/text-runs";
+import { generateThumbnailBlob } from "../lib/thumbnail";
 import {
 	useCanvasStore,
 	useCollaboratorsArray,
@@ -132,6 +135,7 @@ import { DocumentationModal } from "./canvas/DocumentationModal";
 import { EmptyCanvasHero } from "./canvas/EmptyCanvasHero";
 import { ExportModal } from "./canvas/ExportModal";
 import GhostLayer from "./canvas/GhostLayer";
+import { GridLayer } from "./canvas/GridLayer";
 import {
 	type GroupHandlePosition,
 	GroupTransformHandles,
@@ -141,12 +145,14 @@ import { PerfHUD } from "./canvas/PerfHUD";
 import { PropertiesPanel } from "./canvas/PropertiesPanel";
 import { type HandlePosition, ResizeHandles } from "./canvas/ResizeHandles";
 import { RichTextEditor } from "./canvas/RichTextEditor";
+import { RoomChat } from "./canvas/RoomChat";
 import { RotationControls } from "./canvas/RotationControls";
 import { TextFormattingToolbar } from "./canvas/TextFormattingToolbar";
 // Import components directly to avoid circular dependencies through barrel exports
 import { Toolbar } from "./canvas/Toolbar";
 import { VersionsPanel } from "./canvas/VersionsPanel";
 import { ZoomControls } from "./canvas/ZoomControls";
+import { SetupStatus } from "./SetupStatus";
 
 // ============================================================================
 // TYPES
@@ -1036,6 +1042,7 @@ function renderElement(
 // ============================================================================
 
 export function Canvas({ roomId, token }: CanvasProps) {
+	const router = useRouter();
 	// ─────────────────────────────────────────────────────────────────
 	// REFS
 	// ─────────────────────────────────────────────────────────────────
@@ -1060,7 +1067,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		batchUpdateElements,
 		deleteElements,
 		updateCursor,
+		updateLaser,
 		updateSelection,
+		updateViewport,
 		updateEditingElement,
 		restoreVersion,
 		undo,
@@ -1129,7 +1138,18 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		isTextEditing,
 		setTextEditing,
 		setActiveTextStyle,
+		canvasBackgroundColor,
+		activeGridMode,
+		myName,
 	} = useCanvasStore();
+
+	// ─────────────────────────────────────────────────────────────────
+	// BROADCAST VIEWPORT (Follow The Leader)
+	// ─────────────────────────────────────────────────────────────────
+
+	useEffect(() => {
+		updateViewport({ scrollX, scrollY, zoom });
+	}, [scrollX, scrollY, zoom, updateViewport]);
 
 	// Elements and collaborators from store
 	const elements = useElementsArray();
@@ -1489,6 +1509,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		});
 	}, [addElement]);
 
+	const { updateSettings } = useYjsSync(roomId, token ?? null);
+
 	// ─────────────────────────────────────────────────────────────────
 	// AUTO-CAPTURE THUMBNAIL for dashboard preview
 	// Debounced: captures 2s after any element change
@@ -1499,6 +1521,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		process.env.NEXT_PUBLIC_HTTP_URL || "https://lekhaflow.rishiikesh.me";
 
 	useEffect(() => {
+		// Read elements so the hook runs on elements change without lint failing
+		const _ = elements;
+
 		// Clear previous timer on every element change
 		if (thumbnailTimerRef.current) {
 			clearTimeout(thumbnailTimerRef.current);
@@ -1508,49 +1533,53 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		thumbnailTimerRef.current = setTimeout(async () => {
 			const stage = stageRef.current;
 			if (!stage) return;
-
 			const layer = stage.getLayers()[0];
-			if (!layer || layer.children.length === 0) return;
+			if (!layer || layer.children.length === 0 || !("children" in layer))
+				return;
 
 			try {
-				const KonvaLib = (await import("konva")).default;
+				const blob = await generateThumbnailBlob(
+					stage as unknown as import("konva/lib/Stage").Stage,
+					canvasBackgroundColor || "#ffffff",
+				);
+				if (!blob) return;
 
-				// Add temp background
-				const bgRect = new KonvaLib.Rect({
-					x: -stage.x() / stage.scaleX(),
-					y: -stage.y() / stage.scaleY(),
-					width: stage.width() / stage.scaleX(),
-					height: stage.height() / stage.scaleY(),
-					fill: "#fafafa",
+				// Convert Blob to Base64 for the transfer (since we don't have multer yet)
+				const reader = new FileReader();
+				const base64Promise = new Promise<string>((resolve) => {
+					reader.onloadend = () => resolve(reader.result as string);
 				});
-				layer.add(bgRect);
-				bgRect.moveToBottom();
-				layer.draw();
+				reader.readAsDataURL(blob);
+				const base64Data = await base64Promise;
 
-				const dataURL = stage.toDataURL({
-					pixelRatio: 0.2,
-					mimeType: "image/png",
-				});
-
-				// Cleanup
-				bgRect.destroy();
-				layer.draw();
-
-				// Upload
+				// Upload to Backend (which handles Supabase Storage)
 				const {
 					data: { session },
 				} = await supabase.auth.getSession();
 				if (!session) return;
 
-				await fetch(`${HTTP_URL}/api/v1/canvas/${roomId}`, {
-					method: "PUT",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${session.access_token}`,
+				const res = await fetch(
+					`${HTTP_URL}/api/v1/canvas/${roomId}/thumbnail`,
+					{
+						method: "PUT",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${session.access_token}`,
+						},
+						body: JSON.stringify({ thumbnail_url: base64Data }),
 					},
-					body: JSON.stringify({ thumbnail_url: dataURL }),
-				});
-			} catch {}
+				);
+
+				if (!res.ok) {
+					console.error(
+						"[Thumbnail] Upload HTTP Error:",
+						res.status,
+						await res.text(),
+					);
+				}
+			} catch (err) {
+				console.error("[Thumbnail] Update failed:", err);
+			}
 		}, 2000);
 
 		return () => {
@@ -1559,7 +1588,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			}
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [roomId, HTTP_URL]);
+	}, [roomId, HTTP_URL, elements, canvasBackgroundColor]);
 
 	// Reconnect function
 	const handleReconnect = useCallback(() => {
@@ -1695,6 +1724,13 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		};
 
 		const onWheel = (e: WheelEvent) => {
+			// Skip events that originate from UI panels (e.g., PropertiesPanel).
+			// Those panels attach their own native wheel listener that calls
+			// stopPropagation(), but in case the event still reaches here
+			// (e.g., capture phase), check if the target is a UI overlay element.
+			const target = e.target as HTMLElement;
+			if (target?.closest?.("[data-ui-panel]")) return;
+
 			if (e.ctrlKey || e.metaKey) {
 				// Always prevent browser zoom regardless of target
 				e.preventDefault();
@@ -1884,6 +1920,103 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	/**
 	 * Complete rich-text editing — create or update text element with runs.
 	 */
+	const _handleCompleteText = useCallback(
+		async (text: string) => {
+			if (editingText && text.trim()) {
+				// Use default dimensions since textarea ref is no longer available
+				const width = editingText.initialWidth ?? 200;
+				const height = editingText.initialHeight ?? 40;
+
+				if (editingText.elementId) {
+					// Update existing text element
+					updateElement(editingText.elementId, {
+						text,
+						width: width / zoom,
+						height: height / zoom,
+					});
+				} else {
+					// Create new text element
+					const newText = createText(editingText.x, editingText.y, text, {
+						strokeColor: currentStrokeColor,
+						opacity: currentOpacity,
+						width: width / zoom,
+						height: height / zoom,
+						zIndex: getNextZIndex(),
+					});
+					addElement(newText);
+				}
+
+				// Process Mentions
+				try {
+					const mentionMatches = text.match(/@([a-zA-Z0-9_-]+)/g);
+					if (mentionMatches && mentionMatches.length > 0) {
+						const state = useCanvasStore.getState();
+						const rId = state.roomId;
+						const myName = state.myName;
+
+						if (rId && myName) {
+							const { data } = await supabase.auth.getSession();
+							if (data?.session) {
+								const collabMap = state.collaborators;
+								const mentionedNames = mentionMatches.map((m) =>
+									m.slice(1).toLowerCase(),
+								);
+
+								Array.from(collabMap.values()).forEach((collab) => {
+									if (!collab.isCurrentUser && collab.name) {
+										const collabNameCompact = collab.name
+											.replace(/\s+/g, "")
+											.toLowerCase();
+										if (mentionedNames.includes(collabNameCompact)) {
+											// Need HTTP URL from environment
+											const HTTP_URL =
+												process.env.NEXT_PUBLIC_HTTP_URL ||
+												"http://localhost:8000";
+											fetch(`${HTTP_URL}/api/v1/notifications`, {
+												method: "POST",
+												headers: {
+													"Content-Type": "application/json",
+													Authorization: `Bearer ${data.session.access_token}`,
+												},
+												body: JSON.stringify({
+													userId: collab.id,
+													type: "mention",
+													content: `${myName} mentioned you: "${text.substring(0, 40)}..."`,
+													canvasId: rId,
+												}),
+											}).catch(console.error);
+										}
+									}
+								});
+							}
+						}
+					}
+				} catch (err) {
+					console.error("Mentions processing failed:", err);
+				}
+			} else if (editingText?.elementId && !text.trim()) {
+				// If editing existing element and text is empty, delete the element
+				deleteElements([editingText.elementId]);
+			}
+
+			setEditingText(null);
+			setTextEditing(false);
+			updateEditingElement(null);
+		},
+		[
+			editingText,
+			zoom,
+			currentStrokeColor,
+			currentOpacity,
+			addElement,
+			updateElement,
+			deleteElements,
+			getNextZIndex,
+			setTextEditing,
+			updateEditingElement,
+		],
+	);
+
 	const handleCompleteRichText = useCallback(
 		(
 			runs: TextRun[],
@@ -2129,6 +2262,31 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		[isReadOnly, selectedElementIds, elements],
 	);
 
+	const [isArchived, setIsArchived] = useState(false);
+
+	// Fetch canvas metadata
+	useEffect(() => {
+		const fetchMetadata = async () => {
+			if (!token) return;
+			try {
+				const res = await fetch(`${HTTP_URL}/api/v1/canvas/${roomId}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+				if (res.ok) {
+					const json = await res.json();
+					const canvas = json.data.canvas;
+					setIsArchived(canvas.is_archived);
+					if (canvas.is_archived) {
+						setReadOnly(true);
+					}
+				}
+			} catch (e) {
+				console.error("Failed to fetch canvas metadata:", e);
+			}
+		};
+		fetchMetadata();
+	}, [roomId, token, HTTP_URL, setReadOnly]);
+
 	/**
 	 * Close context menu
 	 */
@@ -2146,10 +2304,12 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	 */
 	const showBeautifyButton = useMemo(() => {
 		if (selectedElementIds.size === 0) return false;
-		return elementsRef.current.some(
-			(el) => selectedElementIds.has(el.id) && el.type === "freedraw",
+		return elements.some(
+			(el) =>
+				selectedElementIds.has(el.id) &&
+				(el.type === "freedraw" || (el.type as string) === "freehand"),
 		);
-	}, [selectedElementIds]);
+	}, [selectedElementIds, elements]);
 
 	/**
 	 * Handle beautify: detect shapes from selected freedraw strokes and
@@ -2157,9 +2317,19 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	 */
 	const handleBeautify = useCallback(() => {
 		if (isReadOnly) return;
-		const selectedEls = elementsRef.current.filter((el) =>
+
+		// Read elements from the ref first; fall back to the live store snapshot
+		// in case the ref hasn't been flushed yet (effects run after paint).
+		let selectedEls = elementsRef.current.filter((el) =>
 			selectedElementIds.has(el.id),
 		);
+		if (selectedEls.length === 0) {
+			// Fallback: read directly from store (always up-to-date)
+			const storeMap = useCanvasStore.getState().elements;
+			selectedEls = Array.from(storeMap.values()).filter((el) =>
+				selectedElementIds.has(el.id),
+			);
+		}
 		if (selectedEls.length === 0) return;
 
 		const { removedIds, newElements } = beautifyElements(
@@ -2195,8 +2365,14 @@ export function Canvas({ roomId, token }: CanvasProps) {
 	 */
 	const handleDelete = useCallback(() => {
 		if (selectedElementIds.size > 0) {
-			deleteElements(Array.from(selectedElementIds));
-			clearSelection();
+			const unlockedIds = Array.from(selectedElementIds).filter((id) => {
+				const el = elementsRef.current.find((e) => e.id === id);
+				return el && !el.locked;
+			});
+			if (unlockedIds.length > 0) {
+				deleteElements(unlockedIds);
+				clearSelection();
+			}
 		}
 	}, [selectedElementIds, deleteElements, clearSelection]);
 
@@ -2235,14 +2411,16 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				return;
 			}
 
-			// Lock toggle: L key (works regardless of read-only state)
+			// Lock toggle: L key (works regardless of read-only state unless archived)
 			if (
 				!e.ctrlKey &&
 				!e.metaKey &&
 				!e.altKey &&
 				e.key.toLowerCase() === "l"
 			) {
-				setReadOnly(!isReadOnly);
+				if (!isArchived) {
+					setReadOnly(!isReadOnly);
+				}
 				return;
 			}
 
@@ -2317,8 +2495,14 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				selectedElementIds.size > 0
 			) {
 				if (isReadOnly) return;
-				deleteElements(Array.from(selectedElementIds));
-				clearSelection();
+				const unlockedIds = Array.from(selectedElementIds).filter((id) => {
+					const el = elements.find((e) => e.id === id);
+					return el && !el.locked;
+				});
+				if (unlockedIds.length > 0) {
+					deleteElements(unlockedIds);
+					clearSelection();
+				}
 				return;
 			}
 
@@ -2456,6 +2640,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		handlePaste,
 		handleBringToFront,
 		handleSendToBack,
+		isArchived,
 		isReadOnly,
 		setReadOnly,
 		handleImportScene,
@@ -2657,7 +2842,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 							) {
 								groupMoveStartRef.current = point;
 								groupMoveInitialRef.current = elements
-									.filter((el) => selectedElementIds.has(el.id))
+									.filter((el) => selectedElementIds.has(el.id) && !el.locked)
 									.map((el) => ({ id: el.id, x: el.x, y: el.y }));
 							}
 						}
@@ -2667,8 +2852,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 					// Multi-select: click inside group bounds but not on any element
 					// → start group move of all selected elements
 					if (selectedElementIds.size > 1) {
-						const selEls = elements.filter((el) =>
-							selectedElementIds.has(el.id),
+						const selEls = elements.filter(
+							(el) => selectedElementIds.has(el.id) && !el.locked,
 						);
 						const gb = getCombinedBounds(selEls);
 						if (
@@ -2796,7 +2981,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				case "laser": {
 					// Laser tool - temporary pointer (doesn't persist)
 					setIsDrawing(true);
-					laserPointsRef.current = [[0, 0]];
+					laserPointsRef.current = [[point.x, point.y]];
 					break;
 				}
 
@@ -2816,7 +3001,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 					erasedElementsRef.current.clear();
 
 					const elementToDelete = getElementAtPoint(point, elements);
-					if (elementToDelete) {
+					if (elementToDelete && !elementToDelete.locked) {
 						deleteElements([elementToDelete.id]);
 						erasedElementsRef.current.add(elementToDelete.id);
 					}
@@ -2946,6 +3131,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				const elementToDelete = getElementAtPoint(point, elements);
 				if (
 					elementToDelete &&
+					!elementToDelete.locked &&
 					!erasedElementsRef.current.has(elementToDelete.id)
 				) {
 					deleteElements([elementToDelete.id]);
@@ -2956,10 +3142,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 			// Handle laser pointer (temporary drawing)
 			if (activeTool === "laser" && isDrawing && interactionStartPoint) {
-				const dx = point.x - interactionStartPoint.x;
-				const dy = point.y - interactionStartPoint.y;
-
-				laserPointsRef.current.push([dx, dy]);
+				laserPointsRef.current.push([point.x, point.y]);
+				updateLaser(laserPointsRef.current);
 
 				// Generate SVG path for laser
 				const pathData = outlineToSvgPath(laserPointsRef.current, {
@@ -3138,6 +3322,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			rotatingElement,
 			broadcastDrawingPreview,
 			storeBatchUpdate,
+			updateLaser,
 		],
 	);
 
@@ -3253,6 +3438,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		if (activeTool === "laser") {
 			setLaserPath(null);
 			laserPointsRef.current = [];
+			updateLaser(undefined);
 		}
 
 		// Reset state
@@ -3287,6 +3473,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		marqueeRect,
 		elements,
 		batchUpdateElements,
+		updateLaser,
 	]);
 
 	/**
@@ -3947,7 +4134,8 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				selectedElementIds.has(el.id) &&
 				el.type !== "line" &&
 				el.type !== "arrow" &&
-				el.type !== "freedraw",
+				el.type !== "freedraw" &&
+				!el.locked,
 		);
 	}, [activeTool, elements, selectedElementIds]);
 
@@ -3955,22 +4143,10 @@ export function Canvas({ roomId, token }: CanvasProps) {
 		// biome-ignore lint/a11y/noStaticElementInteractions: Context menu handler for canvas area
 		<div
 			ref={containerRef}
-			className="relative w-full h-full overflow-hidden"
-			style={{ backgroundColor: "var(--color-canvas)" }}
+			className="relative w-full h-full overflow-hidden transition-colors duration-300 dot-background"
+			style={{ backgroundColor: canvasBackgroundColor }}
 			onContextMenu={handleContextMenu}
 		>
-			{/* Clean dot grid background - Excalidraw style */}
-			<div
-				className="absolute inset-0 pointer-events-none"
-				style={{
-					backgroundImage: `
-            radial-gradient(circle, #d4d4d4 1px, transparent 1px)
-          `,
-					backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-					backgroundPosition: `${scrollX}px ${scrollY}px`,
-				}}
-			/>
-
 			{/* UI Components */}
 			<HeaderLeft
 				onClearCanvas={handleClearCanvas}
@@ -3981,7 +4157,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			<HeaderRight />
 			<Toolbar />
 			{isTextEditing && <TextFormattingToolbar />}
-			<PropertiesPanel />
+			<PropertiesPanel onUpdateSettings={updateSettings} />
 			<BeautifyButton
 				visible={showBeautifyButton}
 				onBeautify={handleBeautify}
@@ -3992,6 +4168,9 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				canUndo={canUndo}
 				canRedo={canRedo}
 			/>
+
+			<RoomChat />
+			<SetupStatus />
 
 			{/* Diagram Intent Classification Badge (Story 5) */}
 			<DiagramIntentBadge intent={diagramIntent} />
@@ -4007,7 +4186,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 			{elements.length === 0 && <EmptyCanvasHero />}
 
 			{/* Collaborator Cursors */}
-			<CollaboratorCursors collaborators={collaborators} />
+			<CollaboratorCursors collaborators={collaborators} myName={myName} />
 
 			{/* Connection Status */}
 			<ConnectionStatus
@@ -4033,6 +4212,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				onMouseLeave={handleMouseLeave}
 				onDblClick={handleDoubleClick}
 				style={{
+					touchAction: "none",
 					cursor:
 						activeTool === "hand"
 							? isDragging
@@ -4044,6 +4224,17 @@ export function Canvas({ roomId, token }: CanvasProps) {
 				}}
 			>
 				<Layer>
+					{/* Grid Background Component (Synced Story 1.3.2) */}
+					<GridLayer
+						width={dimensions.width || window.innerWidth}
+						height={dimensions.height || window.innerHeight}
+						zoom={zoom}
+						scrollX={scrollX}
+						scrollY={scrollY}
+						mode={activeGridMode}
+						canvasBackgroundColor={canvasBackgroundColor}
+					/>
+
 					{/* Render visible elements (viewport-culled for performance) */}
 					{visibleElements.map((element) =>
 						renderElement(
@@ -4051,6 +4242,7 @@ export function Canvas({ roomId, token }: CanvasProps) {
 							selectedElementIds.has(element.id),
 							activeTool === "selection" &&
 								!rotatingElement &&
+								!element.locked &&
 								selectedElementIds.size <= 1,
 							false, // not preview
 							handleElementDragEnd,
@@ -4077,16 +4269,35 @@ export function Canvas({ roomId, token }: CanvasProps) {
 						))}
 
 					{/* Render laser path (temporary) */}
-					{laserPath && activeTool === "laser" && interactionStartPoint && (
+					{laserPath && activeTool === "laser" && (
 						<Path
 							data={laserPath}
-							x={interactionStartPoint.x}
-							y={interactionStartPoint.y}
 							fill={currentStrokeColor}
 							opacity={0.6}
 							listening={false}
 						/>
 					)}
+
+					{/* Render remote laser paths */}
+					{collaborators.map((c) => {
+						if (!c.laserData || c.laserData.length === 0) return null;
+						const remotePath = outlineToSvgPath(c.laserData, {
+							size: currentStrokeWidth * 2,
+							thinning: 0.5,
+							smoothing: 0.5,
+							streamline: 0.5,
+							simulatePressure: true,
+						});
+						return (
+							<Path
+								key={`laser-${c.id}`}
+								data={remotePath}
+								fill={c.color}
+								opacity={0.6}
+								listening={false}
+							/>
+						);
+					})}
 
 					{/* ── Single-selection handles (resize + rotate) ── */}
 					{selectedElementIds.size === 1 &&
@@ -4160,7 +4371,6 @@ export function Canvas({ roomId, token }: CanvasProps) {
 											/>
 										);
 									})}
-									{/* Group transformer with resize + rotate handles */}
 									{groupBounds && (
 										<GroupTransformHandles
 											x={groupBounds.x - 4}
@@ -4274,6 +4484,23 @@ export function Canvas({ roomId, token }: CanvasProps) {
 
 			{/* Activity Log Sidebar */}
 			<ActivitySidebar />
+
+			{/* Archived Banner */}
+			{isArchived && (
+				<div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+					<div className="bg-orange-50 border border-orange-200 text-orange-700 px-6 py-2 rounded-full shadow-lg flex items-center gap-2 font-medium backdrop-blur-sm pointer-events-auto">
+						<LucideArchive size={16} />
+						<span>This canvas is archived and is in read-only mode</span>
+						<button
+							type="button"
+							onClick={() => router.push("/")}
+							className="ml-2 text-xs bg-orange-200 hover:bg-orange-300 px-2 py-0.5 rounded transition-colors"
+						>
+							Back to Dashboard
+						</button>
+					</div>
+				</div>
+			)}
 
 			{/* AI Chat Sidebar */}
 			<AiChatSidebar stageRef={stageRef} />
